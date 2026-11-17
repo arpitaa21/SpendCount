@@ -1,0 +1,211 @@
+date,description,amount,type,category,source
+2026-07-21,Grocery market,361.0,expense,Food,synthetic
+2026-07-21,Campus cafe lunch,184.0,expense,Food,synthetic
+2026-07-22,Grocery market,175.0,expense,Food,synthetic
+2026-07-22,Grocery market,107.0,expense,Food,synthetic
+2026-07-23,Spotify premium,509.0,expense,Subscriptions,synthetic
+2026-07-23,Metro recharge,364.0,expense,Transport,synthetic
+2026-07-24,Coffee and snacks,512.0,expense,Food,synthetic
+2026-07-24,Coffee and snacks,300.0,expense,Food,synthetic
+2026-07-25,Family allowance,7418.0,income,Family Allowance,synthetic
+2026-07-27,Campus essentials,388.0,expense,Shopping,synthetic
+2026-07-27,Hostel fee,1075.0,expense,Rent and Hostel,synthetic
+2026-07-28,Movie ticket,450.0,expense,Entertainment,synthetic
+2026-07-28,Spotify premium,126.0,expense,Subscriptions,synthetic
+2026-07-29,Bank charge,318.0,expense,Other,synthetic
+2026-07-29,Bus ticket,544.0,expense,Transport,synthetic
+2026-07-30,Grocery market,443.0,expense,Food,synthetic
+2026-07-30,Spotify premium,153.0,expense,Subscriptions,synthetic
+2026-07-31,Mess dinner,553.0,expense,Food,synthetic
+2026-07-31,Grocery market,650.0,expense,Food,synthetic
+2026-08-01,Movie ticket,137.0,expense,Entertainment,synthetic
+2026-08-01,Weekend outing,403.0,expense,Entertainment,synthetic
+2026-08-02,Grocery market,402.0,expense,Food,synthetic
+2026-08-03,Metro recharge,549.0,expense,Transport,synthetic
+2026-08-03,Coffee and snacks,332.0,expense,Food,synthetic
+2026-08-04,Auto ride,488.0,expense,Transport,synthetic
+2026-08-04,Mess dinner,221.0,expense,Food,synthetic
+2026-08-07,Campus essentials,1693.0,expense,Shopping,synthetic
+2026-08-08,Bus ticket,559.0,expense,Transport,synthetic
+2026-08-08,Campus cafe lunch,646.0,expense,Food,synthetic
+2026-08-08,Scholarship disbursement,12000.0,income,Scholarship,synthetic
+2026-08-09,Coffee and snacks,629.0,expense,Food,synthetic
+2026-08-09,Textbook and stationery,996.0,expense,Academics,synthetic
+2026-08-10,Coffee and snacks,83.0,expense,Food,synthetic
+2026-08-11,Textbook and stationery,1339.0,expense,Academics,synthetic
+2026-08-11,Movie ticket,385.0,expense,Entertainment,synthetic
+2026-08-11,Campus cafe lunch,245.0,expense,Food,synthetic
+2026-08-12,Auto ride,194.0,expense,Transport,synthetic
+2026-08-12,Movie ticket,394.0,expense,Entertainment,synthetic
+2026-08-14,Haircut salon,167.0,expense,Personal Care,synthetic
+2026-08-14,Movie ticket,625.0,expense,Entertainment,synthetic
+2026-08-14,Grocery market,566.0,expense,Food,synthetic
+2026-08-15,Movie ticket,513.0,expense,Entertainment,synthetic
+2026-08-16,Textbook and stationery,1712.0,expense,Academics,synthetic
+2026-08-16,Cloud storage,488.0,expense,Subscriptions,synthetic
+2026-08-16,Auto ride,609.0,expense,Transport,synthetic
+2026-08-17,Campus cafe lunch,426.0,expense,Food,synthetic
+2026-08-17,Campus internship stipend,8500.0,income,Internship,synthetic
+2026-08-18,Campus cafe lunch,305.0,expense,Food,synthetic
+2026-08-18,Grocery market,140.0,expense,Food,synthetic
+2026-08-21,Electricity bill,870.0,expense,Rent and Hostel,synthetic
+2026-08-22,Grocery market,564.0,expense,Food,synthetic
+2026-08-23,Movie ticket,274.0,expense,Entertainment,synthetic
+2026-08-23,Coffee and snacks,521.0,expense,Food,synthetic
+2026-08-24,Bus ticket,135.0,expense,Transport,synthetic
+2026-08-25,Campus essentials,424.0,expense,Shopping,synthetic
+2026-08-25,Textbook and stationery,523.0,expense,Academics,synthetic
+2026-08-26,Metro recharge,512.0,expense,Transport,synthetic
+2026-08-26,Family allowance,7784.0,income,Family Allowance,synthetic
+2026-08-27,Mess dinner,157.0,expense,Food,synthetic
+2026-08-28,Movie ticket,180.0,expense,Entertainment,synthetic
+2026-08-28,Online shopping,1407.0,expense,Shopping,synthetic
+2026-08-29,Laundry,322.0,expense,Personal Care,synthetic
+2026-08-29,Metro recharge,572.0,expense,Transport,synthetic
+2026-08-29,Movie ticket,140.0,expense,Entertainment,synthetic
+2026-08-30,Miscellaneous payment,351.0,expense,Other,synthetic
+2026-08-31,Cloud storage,649.0,expense,Subscriptions,synthetic
+2026-09-01,Campus cafe lunch,139.0,expense,Food,synthetic
+2026-09-02,Grocery market,568.0,expense,Food,synthetic
+2026-09-02,Campus cafe lunch,600.0,expense,Food,synthetic
+2026-09-03,Grocery market,149.0,expense,Food,synthetic
+2026-09-03,Bus ticket,332.0,expense,Transport,synthetic
+2026-09-04,Campus essentials,1158.0,expense,Shopping,synthetic
+2026-09-04,Haircut salon,289.0,expense,Personal Care,synthetic
+2026-09-05,Auto ride,387.0,expense,Transport,synthetic
+2026-09-06,Textbook and stationery,448.0,expense,Academics,synthetic
+2026-09-07,Bank charge,182.0,expense,Other,synthetic
+2026-09-08,Electricity bill,571.0,expense,Rent and Hostel,synthetic
+2026-09-08,Weekend outing,330.0,expense,Entertainment,synthetic
+2026-09-09,Bus ticket,636.0,expense,Transport,synthetic
+2026-09-10,Bank charge,621.0,expense,Other,synthetic
+2026-09-11,Hostel fee,1658.0,expense,Rent and Hostel,synthetic
+2026-09-11,Haircut salon,217.0,expense,Personal Care,synthetic
+2026-09-12,Grocery market,646.0,expense,Food,synthetic
+2026-09-13,Campus essentials,1769.0,expense,Shopping,synthetic
+2026-09-14,Campus essentials,840.0,expense,Shopping,synthetic
+2026-09-15,Pharmacy medicine,132.0,expense,Healthcare,synthetic
+2026-09-16,Movie ticket,125.0,expense,Entertainment,synthetic
+2026-09-16,Coffee and snacks,213.0,expense,Food,synthetic
+2026-09-17,Bus ticket,517.0,expense,Transport,synthetic
+2026-09-17,Campus internship stipend,8500.0,income,Internship,synthetic
+2026-09-20,Pharmacy medicine,638.0,expense,Healthcare,synthetic
+2026-09-20,Movie ticket,645.0,expense,Entertainment,synthetic
+2026-09-20,Auto ride,122.0,expense,Transport,synthetic
+2026-09-21,Haircut salon,120.0,expense,Personal Care,synthetic
+2026-09-22,Coffee and snacks,185.0,expense,Food,synthetic
+2026-09-23,Movie ticket,496.0,expense,Entertainment,synthetic
+2026-09-23,Laundry,322.0,expense,Personal Care,synthetic
+2026-09-24,Movie ticket,502.0,expense,Entertainment,synthetic
+2026-09-24,Mess dinner,420.0,expense,Food,synthetic
+2026-09-24,Weekend outing,334.0,expense,Entertainment,synthetic
+2026-09-25,Spotify premium,471.0,expense,Subscriptions,synthetic
+2026-09-26,Coffee and snacks,551.0,expense,Food,synthetic
+2026-09-26,Grocery market,313.0,expense,Food,synthetic
+2026-09-27,Late night cab ride,1850.0,expense,Transport,synthetic
+2026-09-28,Coffee and snacks,151.0,expense,Food,synthetic
+2026-09-29,Auto ride,629.0,expense,Transport,synthetic
+2026-09-29,Haircut salon,198.0,expense,Personal Care,synthetic
+2026-09-29,Family allowance,8438.0,income,Family Allowance,synthetic
+2026-09-30,Bank charge,351.0,expense,Other,synthetic
+2026-10-01,Auto ride,401.0,expense,Transport,synthetic
+2026-10-02,Hostel fee,1088.0,expense,Rent and Hostel,synthetic
+2026-10-02,Campus cafe lunch,526.0,expense,Food,synthetic
+2026-10-03,Weekend outing,281.0,expense,Entertainment,synthetic
+2026-10-03,Bus ticket,418.0,expense,Transport,synthetic
+2026-10-04,Weekend outing,387.0,expense,Entertainment,synthetic
+2026-10-05,Grocery market,382.0,expense,Food,synthetic
+2026-10-05,Grocery market,468.0,expense,Food,synthetic
+2026-10-06,Campus cafe lunch,641.0,expense,Food,synthetic
+2026-10-06,Mess dinner,295.0,expense,Food,synthetic
+2026-10-07,Campus essentials,959.0,expense,Shopping,synthetic
+2026-10-07,Bus ticket,298.0,expense,Transport,synthetic
+2026-10-08,Pharmacy medicine,253.0,expense,Healthcare,synthetic
+2026-10-08,Campus cafe lunch,423.0,expense,Food,synthetic
+2026-10-08,Scholarship disbursement,12000.0,income,Scholarship,synthetic
+2026-10-09,Printing notes,1677.0,expense,Academics,synthetic
+2026-10-09,Grocery market,283.0,expense,Food,synthetic
+2026-10-11,Auto ride,154.0,expense,Transport,synthetic
+2026-10-12,Campus essentials,698.0,expense,Shopping,synthetic
+2026-10-13,Campus cafe lunch,85.0,expense,Food,synthetic
+2026-10-13,Textbook and stationery,748.0,expense,Academics,synthetic
+2026-10-14,Spotify premium,555.0,expense,Subscriptions,synthetic
+2026-10-14,Electricity bill,548.0,expense,Rent and Hostel,synthetic
+2026-10-15,Bus ticket,623.0,expense,Transport,synthetic
+2026-10-15,Urgent textbook bundle,4900.0,expense,Academics,synthetic
+2026-10-16,Haircut salon,533.0,expense,Personal Care,synthetic
+2026-10-16,Weekend outing,641.0,expense,Entertainment,synthetic
+2026-10-17,Printing notes,1272.0,expense,Academics,synthetic
+2026-10-17,Coffee and snacks,333.0,expense,Food,synthetic
+2026-10-17,Printing notes,1367.0,expense,Academics,synthetic
+2026-10-18,Coffee and snacks,159.0,expense,Food,synthetic
+2026-10-18,Coffee and snacks,423.0,expense,Food,synthetic
+2026-10-19,Grocery market,234.0,expense,Food,synthetic
+2026-10-19,Bus ticket,236.0,expense,Transport,synthetic
+2026-10-19,Mess dinner,504.0,expense,Food,synthetic
+2026-10-20,Metro recharge,143.0,expense,Transport,synthetic
+2026-10-20,Campus internship stipend,8500.0,income,Internship,synthetic
+2026-10-21,Bus ticket,100.0,expense,Transport,synthetic
+2026-10-21,Auto ride,86.0,expense,Transport,synthetic
+2026-10-22,Bus ticket,509.0,expense,Transport,synthetic
+2026-10-23,Hostel fee,1535.0,expense,Rent and Hostel,synthetic
+2026-10-23,Auto ride,359.0,expense,Transport,synthetic
+2026-10-24,Bus ticket,494.0,expense,Transport,synthetic
+2026-10-24,Grocery market,558.0,expense,Food,synthetic
+2026-10-25,Hostel fee,1106.0,expense,Rent and Hostel,synthetic
+2026-10-25,Grocery market,518.0,expense,Food,synthetic
+2026-10-25,Movie ticket,266.0,expense,Entertainment,synthetic
+2026-10-26,Coffee and snacks,545.0,expense,Food,synthetic
+2026-10-27,Weekend outing,364.0,expense,Entertainment,synthetic
+2026-10-27,Synthetic campus meal,293.0,expense,Food,synthetic
+2026-10-28,Campus cafe lunch,99.0,expense,Food,synthetic
+2026-10-29,Bus ticket,150.0,expense,Transport,synthetic
+2026-10-29,Grocery market,111.0,expense,Food,synthetic
+2026-10-29,Grocery market,100.0,expense,Food,synthetic
+2026-10-29,Synthetic campus meal,146.0,expense,Food,synthetic
+2026-10-30,Bus ticket,197.0,expense,Transport,synthetic
+2026-10-31,Auto ride,342.0,expense,Transport,synthetic
+2026-10-31,Grocery market,197.0,expense,Food,synthetic
+2026-10-31,Bank charge,190.0,expense,Other,synthetic
+2026-10-31,Synthetic campus meal,308.0,expense,Food,synthetic
+2026-11-01,Campus essentials,1068.0,expense,Shopping,synthetic
+2026-11-01,Laundry,283.0,expense,Personal Care,synthetic
+2026-11-01,Online shopping,1584.0,expense,Shopping,synthetic
+2026-11-02,Textbook and stationery,1701.0,expense,Academics,synthetic
+2026-11-02,Synthetic campus meal,155.0,expense,Food,synthetic
+2026-11-03,Printing notes,1011.0,expense,Academics,synthetic
+2026-11-03,Campus essentials,441.0,expense,Shopping,synthetic
+2026-11-03,Mess dinner,510.0,expense,Food,synthetic
+2026-11-03,Family allowance,10261.0,income,Family Allowance,synthetic
+2026-11-04,Bank charge,550.0,expense,Other,synthetic
+2026-11-04,Synthetic campus meal,177.0,expense,Food,synthetic
+2026-11-05,Printing notes,1632.0,expense,Academics,synthetic
+2026-11-05,Unusually large cafe group order,3200.0,expense,Food,synthetic
+2026-11-06,Pharmacy medicine,575.0,expense,Healthcare,synthetic
+2026-11-06,Auto ride,354.0,expense,Transport,synthetic
+2026-11-06,Synthetic campus meal,182.0,expense,Food,synthetic
+2026-11-07,Weekend outing,168.0,expense,Entertainment,synthetic
+2026-11-07,Weekend outing,329.0,expense,Entertainment,synthetic
+2026-11-08,Online shopping,988.0,expense,Shopping,synthetic
+2026-11-08,Hostel fee,965.0,expense,Rent and Hostel,synthetic
+2026-11-08,Synthetic campus meal,190.0,expense,Food,synthetic
+2026-11-09,Auto ride,344.0,expense,Transport,synthetic
+2026-11-09,Campus cafe lunch,362.0,expense,Food,synthetic
+2026-11-10,Mess dinner,327.0,expense,Food,synthetic
+2026-11-10,Bus ticket,326.0,expense,Transport,synthetic
+2026-11-10,Synthetic campus meal,309.0,expense,Food,synthetic
+2026-11-11,Spotify premium,538.0,expense,Subscriptions,synthetic
+2026-11-11,Mess dinner,306.0,expense,Food,synthetic
+2026-11-12,Mess dinner,457.0,expense,Food,synthetic
+2026-11-12,Electricity bill,1004.0,expense,Rent and Hostel,synthetic
+2026-11-12,Synthetic campus meal,126.0,expense,Food,synthetic
+2026-11-13,Electricity bill,1020.0,expense,Rent and Hostel,synthetic
+2026-11-13,Grocery market,337.0,expense,Food,synthetic
+2026-11-13,Coffee and snacks,277.0,expense,Food,synthetic
+2026-11-14,Hostel fee,1713.0,expense,Rent and Hostel,synthetic
+2026-11-14,Synthetic campus meal,148.0,expense,Food,synthetic
+2026-11-15,Printing notes,866.0,expense,Academics,synthetic
+2026-11-16,Movie ticket,383.0,expense,Entertainment,synthetic
+2026-11-16,Metro recharge,389.0,expense,Transport,synthetic
+2026-11-16,Cloud storage,209.0,expense,Subscriptions,synthetic
+2026-11-16,Synthetic campus meal,283.0,expense,Food,synthetic
