@@ -20,27 +20,72 @@ TRAINING = {
 MODEL_PATH = Path(__file__).parent / "models" / "categoriser.joblib"
 
 def predict_income_category(description: str):
-    text=description.lower()
-    rules=[("Scholarship",("scholarship","grant","bursary","stipend award")),("Internship",("internship","intern stipend","intern pay")),("Part-time Job",("part time","part-time","salary","wage","payroll","shift pay","job pay")),("Freelancing",("freelance","client payment","project payment","gig income")),("Family Allowance",("allowance","from parents","family transfer","parent transfer","pocket money"))]
-    for category,terms in rules:
-        if any(term in text for term in terms): return {"category":category,"predicted_category":category,"confidence":0.9}
-    return {"category":"Needs Review","predicted_category":"Other Income","confidence":0.24}
+    text = description.lower()
+    rules = [
+        ("Scholarship", ("scholarship", "grant", "bursary", "stipend award")),
+        ("Internship", ("internship", "intern stipend", "intern pay")),
+        ("Part-time Job", ("part time", "part-time", "salary", "wage", "payroll", "shift pay", "job pay")),
+        ("Freelancing", ("freelance", "client payment", "project payment", "gig income")),
+        ("Family Allowance", ("allowance", "from parents", "family transfer", "parent transfer", "pocket money")),
+    ]
+    for category, terms in rules:
+        if any(term in text for term in terms):
+            return {"category": category, "predicted_category": category, "confidence": 0.9}
+    return {"category": "Needs Review", "predicted_category": "Other Income", "confidence": 0.24}
 
 def train_model():
     texts, labels = [], []
     for category, examples in TRAINING.items():
-        texts.extend(examples); labels.extend([category] * len(examples))
-    model = Pipeline([("tfidf", TfidfVectorizer(ngram_range=(1, 2), strip_accents="unicode")), ("classifier", LogisticRegression(max_iter=500, class_weight="balanced"))])
+        texts.extend(examples)
+        labels.extend([category] * len(examples))
+    model = Pipeline([
+        ("tfidf", TfidfVectorizer(ngram_range=(1, 2), strip_accents="unicode")),
+        ("classifier", LogisticRegression(max_iter=500, class_weight="balanced")),
+    ])
     model.fit(texts, labels)
-    MODEL_PATH.parent.mkdir(parents=True, exist_ok=True); joblib.dump(model, MODEL_PATH)
+    try:
+        MODEL_PATH.parent.mkdir(parents=True, exist_ok=True)
+        joblib.dump(model, MODEL_PATH)
+    except OSError:
+        pass
     return model
 
 @lru_cache(maxsize=1)
 def _model():
-    return joblib.load(MODEL_PATH) if MODEL_PATH.exists() else train_model()
+    if MODEL_PATH.exists():
+        try:
+            return joblib.load(MODEL_PATH)
+        except Exception:
+            return train_model()
+    return train_model()
 
-def predict_category(description: str):
-    model = _model()
+@lru_cache(maxsize=32)
+def _model_with_corrections(corrections: tuple[tuple[str, str], ...]):
+    """Train a user-specific model from that user's feedback, never pooled across accounts."""
+    texts, labels = [], []
+    for category, examples in TRAINING.items():
+        texts.extend(examples)
+        labels.extend([category] * len(examples))
+    for description, category in corrections:
+        if description.strip() and category in TRAINING:
+            texts.append(description.strip())
+            labels.append(category)
+    model = Pipeline([
+        ("tfidf", TfidfVectorizer(ngram_range=(1, 2), strip_accents="unicode")),
+        ("classifier", LogisticRegression(max_iter=500, class_weight="balanced")),
+    ])
+    model.fit(texts, labels)
+    return model
+
+def predict_category(description: str, corrections=()):
+    correction_data = tuple((str(text), str(category)) for text, category in corrections)
+    model = _model_with_corrections(correction_data) if correction_data else _model()
     probs = model.predict_proba([description])[0]
-    idx = probs.argmax(); confidence = float(probs[idx]); category = str(model.classes_[idx])
-    return {"category": category if confidence >= .27 else "Needs Review", "predicted_category": category, "confidence": round(confidence, 3)}
+    idx = probs.argmax()
+    confidence = float(probs[idx])
+    category = str(model.classes_[idx])
+    return {
+        "category": category if confidence >= 0.27 else "Needs Review",
+        "predicted_category": category,
+        "confidence": round(confidence, 3),
+    }

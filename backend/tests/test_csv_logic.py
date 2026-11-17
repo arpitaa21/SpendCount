@@ -18,7 +18,7 @@ def test_csv_preview_reports_invalid_rows_and_duplicates():
     db.add(Transaction(user_id=user.id,date=date(2026,11,1),description="Already logged",amount=80,transaction_type="expense",category="Food"));db.commit()
     content=("date,description,amount,type,category\n"
       "2026-11-02,Campus cafe lunch,120,expense,Food\n"
-      "2026-11-03,Invalid date,50,expense,Food\n"
+      "not-a-date,Invalid date,50,expense,Food\n"
       "2026-11-04,Negative amount,-2,expense,Food\n"
       "2026-11-01,Already logged,80,expense,Food\n"
       "2026-11-02,Campus cafe lunch,120,expense,Food\n")

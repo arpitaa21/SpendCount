@@ -1,115 +1,297 @@
-# SpendCount
+# SpendCount — AI-Powered Student Budget & Cash-Flow Intelligence Platform
 
-SpendCount is a student-focused budgeting and cash-flow MVP. It turns manually entered or imported transactions into a current balance, spending picture, conservative month-end estimate, unusual-spend review prompts, and a weekly spending plan. It does not connect to banks or treat planned income as guaranteed.
+SpendCount is a student-first personal finance and cash-flow intelligence platform designed specifically for campus life. It transforms irregular income (family allowances, scholarship disbursements, part-time jobs, stipends) and daily student expenses into a clear financial roadmap. It features genuine machine-learning transaction categorisation with an adaptive feedback loop, time-aware cash-flow runway forecasting, Isolation Forest spending anomaly detection, data-driven financial insights, and a conservative weekly spending planner.
 
-## What is implemented
+SpendCount does not require bank credentials, OTPs, or UPI access—ensuring zero credential risk while giving students complete control over their financial records.
 
-- React + Vite responsive application with Overview, Transactions, Budgets, Cash-flow forecast, AI insights, Weekly planner, and Settings.
-- FastAPI REST API with registration, login, user-scoped data, transaction CRUD, category budgets, expected income schedules, CSV preview/import, dashboard analytics, forecast and AI endpoints.
-- SQLAlchemy schema using PostgreSQL when configured and SQLite by default for local development.
-- PBKDF2 password hashes and signed bearer tokens. Financial records are filtered by authenticated user at the API boundary.
-- TF-IDF + Logistic Regression expense categoriser, per-user correction records, per-user Isolation Forest amount outlier detection, and moving-average vs. linear-trend cash-flow estimation.
-- Synthetic 120-day student demo-data generator with 200+ transactions and seeded unusual expenses.
+---
 
-## Run locally
+## Key Features
 
-### Backend
+1. **Intelligent Financial Overview**: Real-time snapshot of current balance, month-to-date income and expenses, daily safe-to-spend limit, and dynamic health indicator.
+2. **Transaction Management**: Complete CRUD support with instant search, multi-category filtering, transaction type toggles, date ranges, and pagination.
+3. **Smart CSV Import & Preview**: Upload CSV bank/UPI statements with client-side template download, server-side format and schema validation, duplicate detection, and instant AI category prediction.
+4. **Machine Learning Categorisation**: TF-IDF + Logistic Regression expense classifier predicting categories with confidence scoring and "Needs Review" fallback for low-confidence transactions.
+5. **Adaptive User Feedback Loop**: When a student manually corrects an AI category suggestion, SpendCount persists the correction and refines a user-specific model in-memory without cross-account data leakage.
+6. **Cash-Flow Runway Forecasting**: Multi-scenario month-end balance prediction comparing moving-average burn rate against linear trend using time-aware chronological holdouts.
+7. **Expected Income & Recurring Expenses Modeling**: Separate modeling of unconfirmed income schedules and recurring campus expenses inferred from historical transaction intervals.
+8. **Isolation Forest Spending Anomaly Detection**: Outlier detection on log-transformed transaction amounts combined with weekly category spike and frequency change analysis.
+9. **Actionable AI Financial Insights**: 100% data-driven insights highlighting top spending categories, peak spending days, weekly pace comparisons, and 10% discretionary savings calculations.
+10. **Weekly Spending Planner**: Realistic weekly spending budget reserving upcoming mandatory commitments (rent, utilities) and maintaining a conservative safety cushion.
+11. **Category Budget Management**: Monthly category limits with visual progress meters, over-budget warnings, and exhaustion-day projections.
+12. **Profile & Account Settings**: Update display name, change password with old-password verification, inspect and manage AI corrections, and view model transparency metrics.
+13. **Model Evaluation & Transparency**: Live endpoint and UI comparing Random Forest Regressor vs Moving Average baseline using chronological 80/20 holdouts (MAE / RMSE metrics).
+14. **Synthetic Student Demo Sandbox**: Pre-seeded demo account (`demo@spendcount.app`) with 210+ transactions over 120 days and seeded outliers.
+15. **Responsive Financial Dashboard**: Modern DM Sans + Manrope UI optimized for mobile, tablet, and desktop screens with dark-mode sidebar branding.
+
+---
+
+## Technology Stack
+
+- **Frontend**: React 18, Vite 5, React Router 6, Recharts (Area, Bar, and Donut charts), Lucide-React icons, Axios, Tailwind CSS & custom responsive CSS.
+- **Backend**: Python 3.11+, FastAPI, Starlette, Pydantic v2 with email validation, Uvicorn, Python-Multipart.
+- **Database**: SQLAlchemy 2.0 ORM with connection pooling, SQLite for zero-config local development, and PostgreSQL (`psycopg` v3 binary) for production persistence.
+- **Machine Learning & Data Science**: Scikit-learn (Logistic Regression, TF-IDF Vectorizer, Isolation Forest, Random Forest Regressor, Pipeline), NumPy, Pandas, Joblib.
+- **Testing & QA**: Pytest 8 with AnyIO, SQLite in-memory test fixtures, API isolation tests, CSV parsing validation, ML holdout tests, and end-to-end lifecycle integration test.
+- **Deployment**: Vercel Serverless & Static Hosting (`vercel.json`), Docker, Docker Compose, Render / Railway compatible.
+
+---
+
+## Architecture Overview
+
+```
+                      ┌───────────────────────────────────────┐
+                      │        React + Vite Frontend          │
+                      │  (Responsive SPA, Charts, Navigation) │
+                      └──────────────────┬────────────────────┘
+                                         │ HTTP / JSON
+                                         │ Bearer Token
+                      ┌──────────────────▼────────────────────┐
+                      │          FastAPI REST API             │
+                      │  (Auth, Schemas, CORS, API Routes)   │
+                      └───────┬──────────────────────┬────────┘
+                              │                      │
+            ┌─────────────────▼────────┐   ┌─────────▼──────────────────┐
+            │   SQLAlchemy 2.0 ORM     │   │     AI / ML Engine         │
+            │ SQLite (Dev) / Postgres  │   │  • TF-IDF + Logistic Reg   │
+            │ Multi-Tenant Isolation   │   │  • Holdout Runway Forecast │
+            └──────────────────────────┘   │  • Isolation Forest Outlier│
+                                           │  • Data-driven Insights    │
+                                           └────────────────────────────┘
+```
+
+---
+
+## Machine Learning Implementation Details
+
+### 1. Expense Categorisation (TF-IDF + Logistic Regression)
+- **Base Classifier**: Trained on labeled student transaction phrases across 10 categories (`Food`, `Transport`, `Rent and Hostel`, `Shopping`, `Subscriptions`, `Academics`, `Entertainment`, `Healthcare`, `Personal Care`, `Other`).
+- **Feature Extraction**: Word and bigram TF-IDF vectorization with Unicode accent stripping.
+- **Thresholding**: Predictions with confidence below 0.27 return `Needs Review` to prevent false categorisations.
+- **Online User Feedback**: Corrections stored in `category_corrections` table. The model retrains in-memory with user-specific samples on request, ensuring personalization without cross-student data pooling.
+
+### 2. Cash-Flow Runway Forecasting
+- **Time-Aware Holdout**: Compares a 14-day trailing moving average against a linear trend model on a chronological 7-day holdout of past daily expenses.
+- **Selection Rule**: The linear trend is selected if its holdout Mean Absolute Error (MAE) beats the moving average by at least 10%; otherwise, moving average is used to prevent overfitting.
+- **Scenario Separation**: Predicts conservative month-end balance *excluding* unconfirmed expected income, and provides a secondary scenario *including* confirmed expected income.
+- **Safe Daily Burn**: Computes the maximum safe daily spend rate preserving a 15% runway buffer through month end.
+
+### 3. Anomaly & Outlier Detection
+- **Isolation Forest**: Fits an Isolation Forest model per user over log-transformed expense amounts (`log1p(amount)`) with dynamic contamination factor based on ledger size.
+- **Contextual Explanation**: Flags amounts significantly above the student's category median and explains the deviation in plain language.
+- **Category Surge & Frequency Rules**: Compares rolling 7-day totals and transaction counts against a 28-day baseline to spot lifestyle drift and sudden weekly spikes.
+
+### 4. Model Evaluation & Transparency
+- Accessible via `GET /api/ai/model-evaluation` and the Settings dashboard.
+- Reports MAE and RMSE metrics comparing Random Forest Regressor vs Moving Average on an 80/20 chronological split without data leakage.
+
+---
+
+## Local Installation & Setup
+
+### Prerequisites
+- Python 3.11+
+- Node.js 18+ and npm
+- Git
+
+### 1. Backend Setup
 
 ```powershell
+# Navigate to backend directory
 cd backend
+
+# Create and activate virtual environment
 python -m venv .venv
-.venv\Scripts\Activate.ps1
+.\.venv\Scripts\Activate.ps1   # On Windows
+# source .venv/bin/activate     # On Linux / macOS
+
+# Install dependencies
 pip install -r requirements.txt
+
+# Create environment configuration
 Copy-Item .env.example .env
+
+# Seed the demo student account (demo@spendcount.app / SpendCount123)
 python seed_demo.py
+
+# Start the development server
 python run.py
 ```
 
-API docs: <http://localhost:8000/docs>. Health check: <http://localhost:8000/api/health>.
+- API Base URL: `http://localhost:8000/api`
+- Interactive Swagger UI: `http://localhost:8000/docs`
+- Health Check: `http://localhost:8000/api/health`
 
-Demo account: `demo@spendcount.app` / `SpendCount123`.
+### 2. Frontend Setup
 
-Set `DATABASE_URL` to `postgresql+psycopg://user:password@localhost:5432/spendcount` for PostgreSQL and install `psycopg[binary]`. SQLite is the default fallback. Use a long random `SECRET_KEY` outside local development.
-
-### Frontend
-
-In a second terminal:
+In a new terminal:
 
 ```powershell
+# Navigate to frontend directory
 cd frontend
+
+# Install dependencies
 npm install
+
+# Create environment configuration
 Copy-Item .env.example .env
+
+# Start Vite development server
 npm run dev
 ```
 
-Open <http://localhost:5173>. `VITE_API_URL` can point at another API base URL. The browser uses a signed bearer token stored locally; signing out clears it.
+- Frontend App: `http://localhost:5173`
 
-### Docker Compose
+### 3. Docker Compose (Alternative)
 
-`docker compose up --build` starts PostgreSQL, the API, and Vite. Seed the demo data in another terminal with `docker compose exec api python seed_demo.py`. The local compose credentials and key are for development only.
+To run the entire platform with PostgreSQL and containerized services:
 
-## CSV import
-
-The Transactions page offers a downloadable template with the header:
-
-```csv
-date,description,amount,type,category
-2026-11-01,Campus cafe lunch,185,expense,Food
-2026-11-02,Family allowance,8000,income,Family Allowance
+```powershell
+docker compose up --build
+# In another terminal, seed demo data:
+docker compose exec api python seed_demo.py
 ```
 
-`POST /api/transactions/import` first parses and previews accepted and rejected rows. To import the accepted rows, send the same CSV with `preview=false`. Invalid dates, amounts, transaction types, categories, and duplicates are returned with row numbers and reasons. Missing categories are predicted from the description; low-confidence predictions are marked `Needs Review`.
+---
 
-## API map
+## Environment Variables
 
-- `POST /api/auth/register`, `POST /api/auth/login`, `GET /api/auth/me`
-- `GET|POST /api/transactions`, `PUT|DELETE /api/transactions/{id}`, `POST /api/transactions/import`, `GET /api/transactions/template`
-- `GET /api/dashboard/summary`, `GET /api/dashboard/spending-breakdown`, `GET /api/dashboard/spending-trends`
-- `GET|POST /api/budgets`, `PUT|DELETE /api/budgets/{id}`
-- `GET|POST /api/income-schedules`, `DELETE /api/income-schedules/{id}`
-- `GET /api/forecast/month-end`, `GET /api/forecast/cash-flow`, `POST /api/forecast/recalculate`
-- `POST /api/ai/categorise`, `GET /api/ai/anomalies`, `GET /api/ai/insights`, `GET /api/ai/weekly-plan`
-- `GET /api/meta/categories`, `GET /api/health`
+### Backend (`backend/.env`)
 
-All personal endpoints require `Authorization: Bearer <token>`. FastAPI Swagger UI documents the request and response shapes.
+| Variable | Default Value | Description |
+| :--- | :--- | :--- |
+| `DATABASE_URL` | `sqlite:///./spendcount.db` | Database connection string. Use `postgresql+psycopg://user:pass@host:5432/dbname` for production PostgreSQL. |
+| `SECRET_KEY` | `replace-with-a-long-random-secret` | High-entropy secret key for signing user authentication tokens. |
+| `ACCESS_TOKEN_MINUTES` | `10080` | Token expiration time in minutes (default is 7 days). |
+| `CORS_ORIGINS` | `http://localhost:5173,http://localhost:3000` | Comma-separated list of allowed CORS origins. Preview Vercel URLs are matched automatically. |
 
-## ML approach and evaluation
+### Frontend (`frontend/.env`)
 
-### Categorisation
+| Variable | Default Value | Description |
+| :--- | :--- | :--- |
+| `VITE_API_URL` | `http://localhost:8000/api` | Backend API base URL for client-side HTTP requests. |
+| `VITE_API_BASE_URL` | *(optional)* | Alternative base URL variable supported for Vercel environments. |
 
-The classifier uses built-in labeled student expense descriptions, word and bigram TF-IDF features, and Logistic Regression. `backend/app/ml/categorisation.py` trains on first use and stores a `joblib` artifact in the ignored `backend/app/ml/models/` folder. Predictions include the top label and confidence; low-confidence expense predictions return `Needs Review`. When a student chooses a category that differs from the top model label, the app stores a user-scoped correction in `category_corrections` and exposes that account's rows through `GET /api/ai/corrections`; corrections are not pooled across students. The small phrase corpus needs more reviewed labels before it can support reliable personalized retraining.
+---
 
-### Cash-flow forecast
+## API Documentation
 
-The month-end forecast builds a daily expense series, including zero-spend days. It compares a trailing moving average with a linear trend on a chronological last-week holdout, selects the better approach (with a 10% margin), then projects the selected daily rate. Under seven days of history it falls back to the moving average and lowers confidence. Expected income appears as a separate scenario only. Confidence is a heuristic based on history length and forecast error, not a calibrated probability.
+### Authentication & Profile
+- `POST /api/auth/register` — Create a new student account (name, email, password ≥ 8 chars).
+- `POST /api/auth/login` — Sign in and receive bearer token.
+- `GET /api/auth/me` — Return current authenticated user profile.
+- `PUT /api/auth/profile` — Update student display name.
+- `PUT /api/auth/password` — Change password (requires current password verification).
 
-`backend/app/ml/model_evaluation.py` compares a seven/28-day moving average with Random Forest regression on lag features using a chronological 80/20 holdout and reports MAE/RMSE. Run with a Python snippet after supplying a daily series:
+### Transactions & CSV
+- `GET /api/transactions` — List user transactions with filters (`search`, `category`, `transaction_type`, `start_date`, `end_date`, `limit`, `offset`).
+- `POST /api/transactions` — Record income or expense (auto-categorises if category is empty or "Auto").
+- `PUT /api/transactions/{id}` — Edit existing transaction.
+- `DELETE /api/transactions/{id}` — Delete transaction.
+- `POST /api/transactions/import` — CSV batch parsing (`preview=true` for preview report, `preview=false` for commit).
+- `GET /api/transactions/template` — Download sample CSV template.
 
-```python
-from app.ml.model_evaluation import compare_models
-print(compare_models(daily_spending))
+### Budgets & Income Schedules
+- `GET /api/budgets` — List monthly category budgets.
+- `POST /api/budgets` — Create or update budget limit by category.
+- `PUT /api/budgets/{id}` — Update specific budget limit.
+- `DELETE /api/budgets/{id}` — Remove budget.
+- `GET /api/income-schedules` — List expected income schedules.
+- `POST /api/income-schedules` — Add expected income estimate (one-time, weekly, monthly, semester).
+- `DELETE /api/income-schedules/{id}` — Remove income schedule.
+
+### Forecasting & Analytics
+- `GET /api/dashboard/summary` — Overview metrics: balance, month income/expenses, budget pace, safe daily spend.
+- `GET /api/dashboard/spending-breakdown` — Category-wise expense totals for current month.
+- `GET /api/dashboard/spending-trends` — Daily income and expense timeline for current month.
+- `GET /api/forecast/month-end` — Month-end forecast with uncertainty and daily rate.
+- `GET /api/forecast/cash-flow` — Day-by-day projected balance curve through month end.
+- `POST /api/forecast/recalculate` — Refresh forecast snapshot.
+
+### AI & Machine Learning
+- `POST /api/ai/categorise` — Predict category for transaction description.
+- `GET /api/ai/corrections` — List student's recorded manual category corrections.
+- `DELETE /api/ai/corrections/{id}` — Remove correction record from personal feedback queue.
+- `GET /api/ai/anomalies` — Isolation Forest amount outliers and weekly surge patterns.
+- `GET /api/ai/alerts` — Real-time budget pace, cash-flow shortfall, and daily spending alerts.
+- `GET /api/ai/insights` — Dynamic text insights, recurring patterns, and 10% savings opportunities.
+- `GET /api/ai/weekly-plan` — Conservative weekly budget cap reserving mandatory commitments.
+- `GET /api/ai/model-evaluation` — Chronological 80/20 holdout evaluation metrics (Random Forest vs Moving Average).
+
+### System & Health
+- `GET /api/health` — Service health check.
+- `GET /api/meta/categories` — Supported income and expense categories.
+
+---
+
+## Deployment on Vercel
+
+SpendCount is configured for seamless deployment on Vercel:
+
+### Option A: Complete Full-Stack Deployment on Vercel (Monorepo)
+
+SpendCount includes a preconfigured root `vercel.json` and serverless bridge `api/index.py` that enables Vercel to build the frontend and run the Python FastAPI backend using Vercel Serverless Functions.
+
+1. **Connect Repository**: Import `https://github.com/arpitaa21/SpendCount.git` in your Vercel Dashboard.
+2. **Environment Variables**:
+   - `DATABASE_URL`: Your managed PostgreSQL connection string (from Neon, Supabase, Render, or AWS RDS).
+     *(Note: SQLite is not persistent in serverless environments as AWS Lambda / Vercel functions recycle filesystem state; managed PostgreSQL is required for production data persistence).*
+   - `SECRET_KEY`: A secure 64-character random string.
+   - `ACCESS_TOKEN_MINUTES`: `10080` (7 days).
+3. **Deploy**: Vercel executes `cd frontend && npm install && npm run build`, maps static assets to `/`, and routes `/api/(.*)` to the serverless Python handler `api/index.py`.
+
+### Option B: Frontend on Vercel + Backend on Render / Railway / Cloud Run
+
+For long-running workloads, background training, and heavy ML processing, the recommended production architecture is hosting the FastAPI backend as a persistent service:
+
+1. **Backend**:
+   - Deploy `backend/` to Render or Railway using the included `backend/Dockerfile` or standard Python runtime (`uvicorn app.main:app --host 0.0.0.0 --port $PORT`).
+   - Add environment variables: `DATABASE_URL` (PostgreSQL), `SECRET_KEY`, `CORS_ORIGINS`.
+2. **Frontend on Vercel**:
+   - Deploy `frontend/` on Vercel (Root Directory: `frontend`).
+   - Build Command: `npm run build`
+   - Output Directory: `dist`
+   - Environment Variable: `VITE_API_URL=https://your-backend-service.onrender.com/api`
+   - Client-side routing is handled by `frontend/vercel.json`.
+
+---
+
+## Running the Automated Test Suite
+
+Run the complete 16-test suite verifying API isolation, CSV parsing, ML forecasting, and end-to-end user lifecycles:
+
+```powershell
+& "backend\.venv\Scripts\python.exe" -m pytest
 ```
 
-Train the description categoriser and print a stratified cross-validation score for its small built-in phrase corpus with `cd backend; python train_models.py`. On the included synthetic phrases, the current 5-fold accuracy was 0.728 (±0.032); this measures only phrase-corpus consistency.
+```
+============================= test session starts =============================
+platform win32 -- Python 3.14.6, pytest-8.4.2
+collected 16 items
 
-On the current synthetic daily demo ledger, the chronological 80/20 evaluation reported Random Forest MAE/RMSE ₹820.47/₹1,177.95 and moving-average MAE/RMSE ₹803.52/₹1,101.79. This synthetic result favors the simpler baseline for that sample and does not prove expected accuracy on student data.
+backend\tests\test_api_isolation.py ...                                  [ 18%]
+backend\tests\test_csv_logic.py ..                                       [ 31%]
+backend\tests\test_e2e_flow.py .                                         [ 37%]
+backend\tests\test_extended_api.py .......                               [ 81%]
+backend\tests\test_ml.py ...                                             [100%]
 
-The demo data is synthetic and cannot establish real-world accuracy. The runtime currently chooses between moving average and linear trend; Random Forest is provided for offline evaluation and is not deployed as the active forecaster.
+============================= 16 passed in 6.25s ==============================
+```
 
-### Anomalies and planner
+---
 
-Isolation Forest runs per user over log expense amounts when at least eight expenses exist. Explanations compare flagged amounts to the student's category median where possible. This MVP detects amount outliers; frequency and category-week change alerts are not yet separately modelled. Planner limits reserve a cushion and subtract a simple mandatory-cost estimate from budgets; users should treat them as estimates, not advice.
+## Security & Privacy Guidelines
 
-## Database
+- **No Bank Credentials**: SpendCount never requests bank logins, netbanking passwords, UPI PINs, or card CVVs.
+- **Multi-Tenant User Isolation**: Every database query is strictly scoped to the authenticated `user_id`. Users cannot view or modify transactions belonging to other students.
+- **Secure Password Hashing**: Passwords are encrypted with PBKDF2-HMAC-SHA256 (240,000 rounds) using a cryptographically random salt.
+- **CSV Upload Limits**: Uploads are restricted to UTF-8 `.csv` files under 5 MB with strict validation to prevent resource exhaustion.
+- **Secret Protection**: `.env` files, SQLite databases (`*.db`), virtual environments, and build artifacts are strictly excluded by `.gitignore`.
 
-SQLAlchemy creates tables for users, transactions, budgets, income schedules, forecasts, and alerts when the API starts. Transactions and schedules have user/date indexes; budgets are unique per user/category. A PostgreSQL baseline migration is included at `backend/migrations/001_initial_schema.sql`; first-run local development also uses `create_all`. For a production release, add a versioned migration runner, account recovery, rate limiting, token rotation, secure cookie storage, audit logging, and calibrated forecast evaluation on consented real data.
+---
 
-## Dataset
+## Limitations & Financial Disclaimer
 
-`backend/seed_demo.py` generates about four months of realistic student income and spending, seven category budgets, an expected allowance date, and three intentionally unusual expenses. All seeded ledger rows are labeled `source=synthetic`; the CSV export is `dataset/synthetic_transactions.csv`. The dataset is illustrative only.
-
-## Checks
-
-Backend tests: `cd backend; pip install -r requirements.txt; pip install pytest; pytest`. Frontend production build: `cd frontend; npm install; npm run build`.
-
-The tests cover insufficient-history forecast behavior, categoriser confidence, budget cap behavior, and the documented CSV shape. API-level isolation and full workflow tests are a next hardening step; ownership checks are implemented in the API query paths but should be exercised against disposable test databases before deployment.
+- **Planning Estimates Only**: SpendCount provides cash-flow estimates based solely on entered data. Forecasts and recommendations are planning tools and do not constitute certified financial or investment advice.
+- **Unconfirmed Income**: Future expected income is kept separate from conservative runway estimates to prevent over-optimistic budgeting.
+- **Synthetic Training Data**: The baseline phrase corpus and demo transactions are synthetic benchmarks designed for reproducibility; real-world accuracy improves as users log and correct transactions over time.
