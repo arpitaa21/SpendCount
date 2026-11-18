@@ -20,7 +20,10 @@ api.interceptors.request.use(config => {
 api.interceptors.response.use(
   r => r,
   e => {
-    if (e.response?.status === 401) {
+    const requestUrl = String(e.config?.url || '')
+    const isPublicAuthRequest = /\/auth\/(login|register)(?:\?|$)/.test(requestUrl)
+    const sentToken = Boolean(e.config?.headers?.Authorization || e.config?.headers?.authorization)
+    if (e.response?.status === 401 && sentToken && !isPublicAuthRequest) {
       localStorage.removeItem('spendcount_token')
       if (location.pathname !== '/login') location.href = '/login'
     }
