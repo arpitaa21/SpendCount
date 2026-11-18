@@ -21,11 +21,11 @@ api.interceptors.response.use(
   r => r,
   e => {
     const requestUrl = String(e.config?.url || '')
-    const isPublicAuthRequest = /\/auth\/(login|register)(?:\?|$)/.test(requestUrl)
+    const isAuthEndpoint = /\/auth\/(login|register|me)(?:\?|$)/.test(requestUrl)
     const sentToken = Boolean(e.config?.headers?.Authorization || e.config?.headers?.authorization)
-    if (e.response?.status === 401 && sentToken && !isPublicAuthRequest) {
+    if (e.response?.status === 401 && sentToken && !isAuthEndpoint) {
       localStorage.removeItem('spendcount_token')
-      if (location.pathname !== '/login') location.href = '/login'
+      window.dispatchEvent(new CustomEvent('spendcount:unauthorized'))
     }
     return Promise.reject(e)
   }
@@ -40,4 +40,14 @@ export const localDate = (date = new Date()) => {
   return `${year}-${month}-${day}`
 }
 
-export const errorText = e => e.response?.data?.detail || e.message || 'Something went wrong'
+export const errorText = e => {
+  const detail = e.response?.data?.detail
+  if (typeof detail === 'string') return detail
+  if (Array.isArray(detail)) {
+    return detail.map(d => (typeof d === 'string' ? d : d.msg || d.message || JSON.stringify(d))).join(', ') || 'Validation error'
+  }
+  if (detail && typeof detail === 'object') {
+    return detail.message || detail.msg || JSON.stringify(detail)
+  }
+  return e.response?.data?.message || e.message || 'Something went wrong'
+}

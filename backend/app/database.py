@@ -5,19 +5,29 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import DeclarativeBase, sessionmaker
 from sqlalchemy.pool import StaticPool, NullPool
 
-load_dotenv(Path(__file__).resolve().parents[1] / ".env")
-DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///./spendcount.db")
+backend_dir = Path(__file__).resolve().parents[1]
+load_dotenv(backend_dir / ".env")
+DATABASE_URL = os.getenv("DATABASE_URL")
 
 # Normalize PostgreSQL schemes for psycopg
-if DATABASE_URL.startswith("postgres://"):
-    DATABASE_URL = DATABASE_URL.replace("postgres://", "postgresql+psycopg://", 1)
-elif DATABASE_URL.startswith("postgresql://") and not DATABASE_URL.startswith("postgresql+"):
-    DATABASE_URL = DATABASE_URL.replace("postgresql://", "postgresql+psycopg://", 1)
+if DATABASE_URL:
+    if DATABASE_URL.startswith("postgres://"):
+        DATABASE_URL = DATABASE_URL.replace("postgres://", "postgresql+psycopg://", 1)
+    elif DATABASE_URL.startswith("postgresql://") and not DATABASE_URL.startswith("postgresql+"):
+        DATABASE_URL = DATABASE_URL.replace("postgresql://", "postgresql+psycopg://", 1)
 
 # In serverless environments (e.g. Vercel), only /tmp is writable
 is_serverless = bool(os.getenv("VERCEL") or os.getenv("AWS_LAMBDA_FUNCTION_NAME"))
-if is_serverless and DATABASE_URL.startswith("sqlite:///./"):
-    DATABASE_URL = "sqlite:////tmp/spendcount.db"
+
+if is_serverless:
+    if not DATABASE_URL or DATABASE_URL.startswith("sqlite:///"):
+        DATABASE_URL = "sqlite:////tmp/spendcount.db"
+else:
+    if not DATABASE_URL:
+        DATABASE_URL = f"sqlite:///{(backend_dir / 'spendcount.db').as_posix()}"
+    elif DATABASE_URL.startswith("sqlite:///./"):
+        rel_path = DATABASE_URL[len("sqlite:///./"):]
+        DATABASE_URL = f"sqlite:///{(backend_dir / rel_path).as_posix()}"
 
 connect_args = {}
 engine_kwargs = {"pool_pre_ping": True}
