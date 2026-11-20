@@ -1,4 +1,4 @@
-import React,{useEffect,useState} from 'react'
+import React,{useEffect,useRef,useState} from 'react'
 import { Routes,Route,NavLink,useNavigate,useLocation } from 'react-router-dom'
 import { LayoutDashboard,ArrowLeftRight,WalletCards,Activity,Sparkles,CalendarDays,Settings as SettingsIcon,Plus,Menu,X,LogOut,ChevronDown,ArrowUpRight,ArrowDownRight,Search,Upload,Download,Check,AlertTriangle,LoaderCircle,Trash2,Edit2,Calendar,PanelLeftClose,KeyRound,ShieldCheck,BrainCircuit,Sun,Moon } from 'lucide-react'
 import { AreaChart,Area,BarChart,Bar,PieChart,Pie,Cell,ResponsiveContainer,Tooltip,XAxis,YAxis,CartesianGrid,LineChart,Line,Legend } from 'recharts'
@@ -8,13 +8,34 @@ const nav=[['/','Overview',LayoutDashboard],['/transactions','Transactions',Arro
 const EXPENSE=['Food','Transport','Rent and Hostel','Shopping','Subscriptions','Academics','Entertainment','Healthcare','Personal Care','Other'];const INCOME=['Family Allowance','Scholarship','Part-time Job','Internship','Freelancing','Other Income'];const colors=['#5369d8','#28aa82','#efad49','#8c75d4','#ea846d','#63a5c2','#db7090','#8bab5d','#6885b8','#a5aaba']
 function initialTheme(){if(typeof window==='undefined')return 'light';const saved=localStorage.getItem('spendcount_theme');return saved||(window.matchMedia?.('(prefers-color-scheme: dark)').matches?'dark':'light')}
 function ThemeToggle({theme,onToggle}){const Icon=theme==='dark'?Sun:Moon;return <button type="button" className="theme-toggle" onClick={onToggle} aria-label={`Switch to ${theme==='dark'?'light':'dark'} theme`} title={`Switch to ${theme==='dark'?'light':'dark'} theme`}><Icon size={17}/><span>{theme==='dark'?'Light mode':'Dark mode'}</span></button>}
-function App(){const [user,setUser]=useState(null),[busy,setBusy]=useState(true),[menu,setMenu]=useState(false),[theme,setTheme]=useState(initialTheme);const navigate=useNavigate(),loc=useLocation()
- useEffect(()=>{document.documentElement.dataset.theme=theme;localStorage.setItem('spendcount_theme',theme)},[theme])
- useEffect(()=>{api.get('/auth/me').then(r=>setUser(r.data)).catch(()=>setUser(null)).finally(()=>setBusy(false))},[loc.pathname])
- const signout=()=>{localStorage.removeItem('spendcount_token');setUser(null);navigate('/login')}
- if(busy)return <div className="center-screen"><LoaderCircle className="spin"/><span>Loading your workspace…</span></div>
-  if(!user)return <Routes><Route path="*" element={<Auth onLogin={setUser} theme={theme} onThemeToggle={()=>setTheme(t=>t==='dark'?'light':'dark')}/>}/></Routes>
-  return <div className="app-shell"><aside className={`sidebar ${menu?'open':''}`}><div className="brand"><div className="brand-mark"><Activity size={19}/></div><div>spend<span>count</span><small>STUDENT FINANCE</small></div><button className="mobile-close" onClick={()=>setMenu(false)} aria-label="Close navigation"><X size={18}/></button></div><div className="workspace-label">WORKSPACE</div><nav className="sidebar-nav" aria-label="Main navigation">{nav.map(([to,label,Icon])=><NavLink end={to==='/'} to={to} onClick={()=>setMenu(false)} className={({isActive})=>`nav-link ${isActive?'active':''}`} key={to}><Icon size={18}/><span>{label}</span>{label==='AI insights'&&<span className="nav-spark">✦</span>}</NavLink>)}</nav><div className="sidebar-bottom"><div className="support-card"><div className="support-orb"><Sparkles size={16}/></div><b>Your money, clearer.</b><p>Small steps today make a steadier month.</p><NavLink to="/planner">Open weekly plan <ArrowUpRight size={14}/></NavLink></div><button className="profile" onClick={signout}><div className="avatar">{user.name?.[0]?.toUpperCase()}</div><div className="profile-info"><b>{user.name}</b><span>Student account</span></div><LogOut size={16} className="profile-logout"/></button></div></aside><main className="main"><header className="topbar"><button className="hamburger" onClick={()=>setMenu(true)} aria-label="Open navigation"><Menu/></button><div className="breadcrumbs">Workspace <span>/</span> <b>{nav.find(n=>n[0]===loc.pathname)?.[1]||'Overview'}</b></div><div className="top-actions"><span className="today-chip"><span className="green-dot"/> Personal space</span><ThemeToggle theme={theme} onToggle={()=>setTheme(t=>t==='dark'?'light':'dark')}/><div className="top-avatar">{user.name?.[0]?.toUpperCase()}</div></div></header><section className="page-wrap"><Routes><Route path="/" element={<Dashboard user={user}/>}/><Route path="/transactions" element={<Transactions/>}/><Route path="/budgets" element={<Budgets/>}/><Route path="/forecast" element={<ForecastPage/>}/><Route path="/insights" element={<Insights/>}/><Route path="/planner" element={<Planner/>}/><Route path="/settings" element={<Settings user={user} onUserUpdated={setUser}/>}/><Route path="*" element={<Dashboard user={user}/>}/></Routes></section></main>{menu&&<div className="scrim" onClick={()=>setMenu(false)}/>}</div>
+function App(){
+ const [user,setUser]=useState(null),[busy,setBusy]=useState(true),[menu,setMenu]=useState(false),[theme,setTheme]=useState(initialTheme),[profileOpen,setProfileOpen]=useState(false);
+ const profileMenuRef=useRef(null),profileTriggerRef=useRef(null),navigate=useNavigate(),loc=useLocation();
+ useEffect(()=>{document.documentElement.dataset.theme=theme;localStorage.setItem('spendcount_theme',theme)},[theme]);
+ useEffect(()=>{api.get('/auth/me').then(r=>setUser(r.data)).catch(()=>setUser(null)).finally(()=>setBusy(false))},[loc.pathname]);
+ useEffect(()=>{
+  if(!profileOpen)return;
+  const closeOutside=e=>{if(!profileMenuRef.current?.contains(e.target))setProfileOpen(false)};
+  const closeOnEscape=e=>{if(e.key==='Escape'){setProfileOpen(false);profileTriggerRef.current?.focus()}};
+  document.addEventListener('pointerdown',closeOutside);document.addEventListener('keydown',closeOnEscape);
+  return ()=>{document.removeEventListener('pointerdown',closeOutside);document.removeEventListener('keydown',closeOnEscape)};
+ },[profileOpen]);
+ const signout=()=>{localStorage.removeItem('spendcount_token');setUser(null);navigate('/login')};
+ if(busy)return <div className="center-screen"><LoaderCircle className="spin"/><span>Loading your workspace…</span></div>;
+ if(!user)return <Routes><Route path="*" element={<Auth onLogin={setUser} theme={theme} onThemeToggle={()=>setTheme(t=>t==='dark'?'light':'dark')}/>}/></Routes>;
+ return <div className="app-shell">
+  <aside className={`sidebar ${menu?'open':''}`}>
+   <div className="brand"><div className="brand-mark"><Activity size={19}/></div><div>spend<span>count</span><small>STUDENT FINANCE</small></div><button className="mobile-close" onClick={()=>setMenu(false)} aria-label="Close navigation"><X size={18}/></button></div>
+   <div className="workspace-label">WORKSPACE</div>
+   <nav className="sidebar-nav" aria-label="Main navigation">{nav.map(([to,label,Icon])=><NavLink end={to==='/'} to={to} onClick={()=>setMenu(false)} className={({isActive})=>`nav-link ${isActive?'active':''}`} key={to}><Icon size={18}/><span>{label}</span>{label==='AI insights'&&<span className="nav-spark">✦</span>}</NavLink>)}</nav>
+   <div className="sidebar-bottom"><div className="support-card"><div className="support-orb"><Sparkles size={16}/></div><b>Your money, clearer.</b><p>Small steps today make a steadier month.</p><NavLink to="/planner">Open weekly plan <ArrowUpRight size={14}/></NavLink></div><button className="profile" onClick={signout}><div className="avatar">{user.name?.[0]?.toUpperCase()}</div><div className="profile-info"><b>{user.name}</b><span>Student account</span></div><LogOut size={16} className="profile-logout"/></button></div>
+  </aside>
+  <main className="main">
+   <header className="topbar"><button className="hamburger" onClick={()=>setMenu(true)} aria-label="Open navigation"><Menu/></button><div className="breadcrumbs">Workspace <span>/</span> <b>{nav.find(n=>n[0]===loc.pathname)?.[1]||'Overview'}</b></div><div className="top-actions"><span className="today-chip"><span className="green-dot"/> Personal space</span><ThemeToggle theme={theme} onToggle={()=>setTheme(t=>t==='dark'?'light':'dark')}/><div className="account-menu" ref={profileMenuRef}><button ref={profileTriggerRef} type="button" className="top-avatar account-trigger" aria-label={`Open account menu for ${user.name}`} aria-haspopup="menu" aria-expanded={profileOpen} aria-controls="account-menu" onClick={()=>setProfileOpen(open=>!open)}>{user.name?.[0]?.toUpperCase()}</button>{profileOpen&&<div className="profile-menu" id="account-menu" role="menu"><NavLink role="menuitem" className="profile-menu-item" to="/settings" onClick={()=>setProfileOpen(false)}><SettingsIcon size={16}/><span>Settings</span></NavLink></div>}</div></div></header>
+   <section className="page-wrap"><Routes><Route path="/" element={<Dashboard user={user}/>}/><Route path="/transactions" element={<Transactions/>}/><Route path="/budgets" element={<Budgets/>}/><Route path="/forecast" element={<ForecastPage/>}/><Route path="/insights" element={<Insights/>}/><Route path="/planner" element={<Planner/>}/><Route path="/settings" element={<Settings user={user} onUserUpdated={setUser}/>}/><Route path="*" element={<Dashboard user={user}/>}/></Routes></section>
+  </main>
+  {menu&&<div className="scrim" onClick={()=>setMenu(false)}/>}
+ </div>
 }
 
 function Auth({onLogin,theme,onThemeToggle}){

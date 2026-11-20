@@ -293,3 +293,21 @@ body{background:var(--page);color:var(--ink);transition:background-color .18s ea
 :root:not([data-theme="dark"]) .auth-mobile-brand{color:#50645d}
 :root:not([data-theme="dark"]) .auth-mobile-brand i{color:#477d6c}
 :root:not([data-theme="dark"]) .auth-footer{color:#50645d}
+
+/* Account menu beside the theme control. */
+.account-menu{position:relative;display:flex;align-items:center;flex:0 0 auto}
+.account-trigger{border:1px solid transparent;padding:0;transition:box-shadow .15s,border-color .15s,transform .15s}
+.account-trigger:hover{border-color:var(--blue);box-shadow:0 0 0 3px color-mix(in srgb,var(--blue) 22%,transparent);transform:translateY(-1px)}
+.account-trigger:focus-visible{outline:3px solid color-mix(in srgb,var(--blue) 50%,transparent);outline-offset:3px}
+.profile-menu{position:absolute;z-index:70;top:calc(100% + 10px);right:0;min-width:184px;padding:6px;border:1px solid var(--line);border-radius:11px;background:var(--surface);box-shadow:0 14px 34px #10251b26;animation:menu-in .12s ease-out}
+.profile-menu-item{display:flex;align-items:center;gap:10px;min-height:40px;padding:0 11px;border-radius:7px;color:var(--ink);font-size:12px;font-weight:600;transition:background-color .14s,color .14s}
+.profile-menu-item svg{color:var(--blue)}
+.profile-menu-item:hover,.profile-menu-item:focus-visible{background:color-mix(in srgb,var(--blue) 15%,var(--surface));color:var(--ink);outline:none}
+@keyframes menu-in{from{opacity:0;transform:translateY(-3px)}to{opacity:1;transform:translateY(0)}}
+:root:not([data-theme="dark"]) .account-trigger{background:#dcebe4;color:#03120e}
+:root:not([data-theme="dark"]) .profile-menu{border-color:#cdded5;box-shadow:0 14px 34px #03120e20}
+:root:not([data-theme="dark"]) .profile-menu-item svg{color:#477d6c}
+:root[data-theme="dark"] .profile-menu{border-color:#354555;box-shadow:0 14px 34px #0008}
+:root[data-theme="dark"] .profile-menu-item{color:#edf2f7}
+:root[data-theme="dark"] .profile-menu-item:hover,:root[data-theme="dark"] .profile-menu-item:focus-visible{background:#263548;color:#fff}
+@media(prefers-reduced-motion:reduce){.profile-menu{animation:none}.account-trigger{transition:none}}
