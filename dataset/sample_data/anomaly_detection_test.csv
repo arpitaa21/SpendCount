@@ -1,0 +1,13 @@
+transaction_date,description,amount,transaction_type,category
+2026-09-01,Monthly Pocket Money,7000.00,Income,Pocket Money
+2026-09-02,Hostel Mess and Accommodation,4200.00,Expense,Hostel
+2026-09-03,College Canteen Lunch,75.00,Expense,Food
+2026-09-04,City Bus Fare,30.00,Expense,Transport
+2026-09-05,Spotify Student Plan,59.00,Expense,Subscriptions
+2026-09-06,Swiggy Order - Dinner,249.00,Expense,Food
+2026-09-07,Emergency Laptop Repair,8900.00,Expense,Academics
+2026-09-08,Local Grocery Store,180.00,Expense,Food
+2026-09-09,Online Shopping - Electronics,12499.00,Expense,Shopping
+2026-09-10,Duplicate-looking Cafe Payment,485.00,Expense,Food
+2026-09-10,Duplicate-looking Cafe Payment,485.00,Expense,Food
+2026-09-11,Freelance Logo Design Payment,3200.00,Income,Freelance

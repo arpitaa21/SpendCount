@@ -1,0 +1,9 @@
+transaction_date,description,amount,transaction_type,category
+2026-11-01,College Canteen Lunch,75.00,Expense,Food
+not-a-date,Invalid date row,120.00,Expense,Food
+2026-11-03,Non-numeric amount,one hundred,Expense,Food
+2026-11-04,Negative amount,-450.00,Expense,Shopping
+2026-11-05,,300.00,Expense,Transport
+2026-11-06,Unsupported transaction type,100.00,Transfer,Food
+2026-11-07,Missing category,120.00,Expense,
+2026-13-40,Impossible calendar date,75.00,Expense,Food

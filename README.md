@@ -65,10 +65,12 @@ SpendCount does not require bank credentials, OTPs, or UPI access—ensuring zer
 ## Machine Learning Implementation Details
 
 ### 1. Expense Categorisation (TF-IDF + Logistic Regression)
-- **Base Classifier**: Trained on labeled student transaction phrases across 10 categories (`Food`, `Transport`, `Rent and Hostel`, `Shopping`, `Subscriptions`, `Academics`, `Entertainment`, `Healthcare`, `Personal Care`, `Other`).
-- **Feature Extraction**: Word and bigram TF-IDF vectorization with Unicode accent stripping.
-- **Thresholding**: Predictions with confidence below 0.27 return `Needs Review` to prevent false categorisations.
+- **Base Classifier**: TF-IDF word and character n-grams with balanced Logistic Regression; the checked-in joblib artifact is trained on the labelled phrase corpus and valid expense rows in `dataset/sample_data/student_transactions_6_months.csv`.
+- **Evaluation**: `backend/train_models.py` compares the text model with transparent phrase rules using 5-fold `GroupKFold` splits by normalized description, preventing repeated descriptions from appearing in both train and test folds. The supplied synthetic fixture scored 84.85% accuracy / 65.82% macro-F1 for text ML alone and 100% on its 33 unique expense descriptions for rule-plus-ML.
+- **Confidence Handling**: Low-confidence or low-margin text predictions return `Needs Review`; UI explanations distinguish keyword matches, model estimates, and the student's own corrections.
 - **Online User Feedback**: Corrections stored in `category_corrections` table. The model retrains in-memory with user-specific samples on request, ensuring personalization without cross-student data pooling.
+
+The uploaded ZIP is documented as synthetic and illustrative. Its invalid-import and anomaly fixtures are retained for tests but excluded from training. These small-fixture metrics are not evidence of accuracy on real student transactions. To reproduce training and evaluation, run `python train_models.py` from `backend/`; results are written to `dataset/model_evaluation.json` and the versioned artifact to `backend/app/ml/models/categoriser.joblib`.
 
 ### 2. Cash-Flow Runway Forecasting
 - **Time-Aware Holdout**: Compares a 14-day trailing moving average against a linear trend model on a chronological 7-day holdout of past daily expenses.
@@ -184,6 +186,8 @@ docker compose exec api python seed_demo.py
 - `PUT /api/auth/password` — Change password (requires current password verification).
 
 ### Transactions & CSV
+
+The downloadable CSV template uses these columns: `date,description,amount,type,category`.
 - `GET /api/transactions` — List user transactions with filters (`search`, `category`, `transaction_type`, `start_date`, `end_date`, `limit`, `offset`).
 - `POST /api/transactions` — Record income or expense (auto-categorises if category is empty or "Auto").
 - `PUT /api/transactions/{id}` — Edit existing transaction.

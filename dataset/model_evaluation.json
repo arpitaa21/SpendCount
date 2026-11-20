@@ -1,0 +1,41 @@
+{
+  "split": "5-fold GroupKFold by normalized description",
+  "ml_only": {
+    "accuracy": 0.8485,
+    "macro_f1": 0.6582
+  },
+  "rules_plus_ml": {
+    "accuracy": 1.0,
+    "macro_f1": 1.0
+  },
+  "model_version": "spendcount-tfidf-logreg-sample-v2",
+  "source": "synthetic student_transactions_6_months.csv; invalid and anomaly fixtures excluded",
+  "valid_expense_rows_in_sample": 335,
+  "unique_training_examples": 33,
+  "unique_normalized_expense_descriptions": 33,
+  "unique_examples_by_category": {
+    "Academics": 6,
+    "Entertainment": 2,
+    "Food": 10,
+    "Other": 1,
+    "Rent and Hostel": 2,
+    "Shopping": 4,
+    "Subscriptions": 2,
+    "Transport": 6
+  },
+  "training_policy": "Exact duplicate descriptions are deduplicated; all matching test descriptions stay in one group.",
+  "limitations": "Synthetic benchmark only. The lexical rules are broad student-spending cues and have not been independently validated on real users. Do not treat these metrics as real-world accuracy.",
+  "artifact": "backend\\app\\ml\\models\\categoriser.joblib",
+  "artifact_classes": [
+    "Academics",
+    "Entertainment",
+    "Food",
+    "Healthcare",
+    "Other",
+    "Personal Care",
+    "Rent and Hostel",
+    "Shopping",
+    "Subscriptions",
+    "Transport"
+  ]
+}

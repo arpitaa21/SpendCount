@@ -412,3 +412,7 @@ body{background:var(--page);color:var(--ink);transition:background-color .18s ea
 :root[data-theme="dark"] .avatar,:root[data-theme="dark"] .top-avatar{background:#3a301d;color:#ffd987}
 :root:not([data-theme="dark"]) .recharts-cartesian-axis-tick-value{fill:#50645d!important}
 :root:not([data-theme="dark"]) .recharts-cartesian-grid line{stroke:#e5e4d8!important}
+.suggestion{align-items:flex-start}
+.suggestion>div{display:grid;gap:4px;min-width:0}
+.suggestion>div>span{font-size:9px;line-height:1.5;color:var(--muted)}
+.suggestion>div>small{font-size:10px;line-height:1.5;color:var(--ink)}
