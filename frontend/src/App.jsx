@@ -27,12 +27,6 @@ function Auth({onLogin,theme,onThemeToggle}){
   catch(e){setErr(errorText(e))}
   finally{setLoading(false)}
  }
- async function continueDemo(){
-  setLoading(true);setErr('');
-  try{const r=await api.post('/auth/login',{email:'demo@spendcount.app',password:'SpendCount123'});localStorage.setItem('spendcount_token',r.data.access_token);onLogin(r.data.user);go('/')}
-  catch{setErr('Demo account not seeded yet. Run the backend seed script.')}
-  finally{setLoading(false)}
- }
  return <main className="auth-wrap">
   <section className="auth-panel">
    <div className="auth-panel-top"><div className="brand auth-brand"><div className="brand-mark"><Activity size={19}/></div><div>spend<span>count</span><small>STUDENT FINANCE</small></div></div></div>
@@ -51,7 +45,6 @@ function Auth({onLogin,theme,onThemeToggle}){
     {err&&<div className="error-box" role="alert">{err}</div>}
     <button className="primary-btn full" disabled={loading}>{loading?<><LoaderCircle className="spin" size={17}/> {mode==='login'?'Signing in…':'Creating account…'}</>:<>{mode==='login'?'Sign in':'Create account'}<ArrowUpRight size={16}/></>}</button>
     <div className="auth-switch">{mode==='login'?"New to SpendCount?":"Already have an account?"} <button type="button" onClick={()=>{setMode(mode==='login'?'register':'login');setErr('')}}>{mode==='login'?'Create account':'Sign in'}</button></div>
-    <div className="demo-box"><b>Try the demo</b><span>demo@spendcount.app</span><span>SpendCount123</span><button type="button" disabled={loading} onClick={continueDemo}>Continue with demo <ArrowUpRight size={13}/></button></div>
    </form>
    <div className="auth-footer">Privacy-first by design <span>•</span> No bank connection required</div>
   </section>
