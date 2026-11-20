@@ -552,6 +552,21 @@ input:focus,select:focus,textarea:focus{border-color:var(--theme-accent)!importa
 :root[data-theme="dark"] .avatar,:root[data-theme="dark"] .top-avatar{background:#3a301d;color:#ffd987}
 :root:not([data-theme="dark"]) .recharts-cartesian-axis-tick-value{fill:#50645d!important}
 :root:not([data-theme="dark"]) .recharts-cartesian-grid line{stroke:#e5e4d8!important}
+
+/* Keep shared legacy theme rules from overriding the active appearance palette. */
+:root[data-palette] .amount.income,:root[data-palette] .schedule-row strong,:root[data-palette] .trend.up{color:var(--chart-secondary)!important}
+:root[data-palette] .metric-icon.green,:root[data-palette] .health-status,:root[data-palette] .health-status i{color:var(--theme-accent)!important}
+:root[data-palette] .health-status i{background:var(--theme-accent)!important}
+:root[data-palette] .recharts-cartesian-axis-tick-value{fill:var(--muted)!important}
+:root[data-palette] .recharts-cartesian-grid line{stroke:var(--line)!important}
+:root[data-palette] .preview-note{background:color-mix(in srgb,var(--surface) 80%,var(--theme-accent))!important;border-color:color-mix(in srgb,var(--theme-accent) 45%,var(--line))!important;color:var(--ink)!important}
+:root[data-palette] .preview-note>span{background:color-mix(in srgb,var(--theme-accent) 24%,var(--surface))!important;color:var(--theme-accent)!important}
+:root[data-palette] .nav-link.active{background:var(--nav-active)!important;color:var(--nav-active-ink)!important}
+:root[data-palette] .nav-link.active svg{color:var(--nav-active-ink)!important}
+:root[data-palette] .legend-green{background:var(--chart-secondary)!important}
+:root[data-palette="dark-gold"] .amount.income,:root[data-palette="dark-gold"] .schedule-row strong,:root[data-palette="dark-gold"] .trend.up{color:#f6f1e6!important}
+:root[data-palette="dark-gold"] .preview-note{background:#171510!important;border-color:#4a3a1e!important;color:#f4f0e7!important}
+:root[data-palette="dark-gold"] .recharts-cartesian-grid line{stroke:#35322b!important}
 .suggestion{align-items:flex-start}
 .suggestion>div{display:grid;gap:4px;min-width:0}
 .suggestion>div>span{font-size:9px;line-height:1.5;color:var(--muted)}
