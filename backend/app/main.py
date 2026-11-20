@@ -5,7 +5,8 @@ from io import StringIO
 from types import SimpleNamespace
 import csv
 import os
-from fastapi import FastAPI, Depends, HTTPException, UploadFile, File, Query
+import re
+from fastapi import FastAPI, Depends, HTTPException, UploadFile, File, Query, Body
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
 from sqlalchemy import select, func, case, text
@@ -36,10 +37,14 @@ Base.metadata.create_all(bind=engine)
 # changes safe for existing SQLite and PostgreSQL deployments.
 with engine.begin() as _connection:
     if engine.dialect.name == "postgresql":
+        _connection.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS avatar_data_url TEXT"))
         _connection.execute(text("ALTER TABLE alerts ADD COLUMN IF NOT EXISTS alert_key VARCHAR(120) NOT NULL DEFAULT 'legacy'"))
         _connection.execute(text("ALTER TABLE alerts ADD COLUMN IF NOT EXISTS snoozed_until DATE"))
         _connection.execute(text("ALTER TABLE alerts ADD COLUMN IF NOT EXISTS is_active BOOLEAN NOT NULL DEFAULT TRUE"))
     else:
+        _user_columns = {column["name"] for column in __import__("sqlalchemy").inspect(_connection).get_columns("users")}
+        if "avatar_data_url" not in _user_columns:
+            _connection.execute(text("ALTER TABLE users ADD COLUMN avatar_data_url TEXT"))
         _columns = {column["name"] for column in __import__("sqlalchemy").inspect(_connection).get_columns("alerts")}
         for _column, _definition in (("alert_key", "VARCHAR(120) NOT NULL DEFAULT 'legacy'"), ("snoozed_until", "DATE"), ("is_active", "BOOLEAN NOT NULL DEFAULT TRUE")):
             if _column not in _columns:
@@ -204,25 +209,29 @@ def register(data: RegisterIn, db: Session = Depends(get_db)):
     db.add(user)
     db.commit()
     db.refresh(user)
-    return {"access_token": create_token(user.id), "token_type": "bearer", "user": {"id": user.id, "name": user.name, "email": user.email}}
+    return {"access_token": create_token(user.id), "token_type": "bearer", "user": {"id": user.id, "name": user.name, "email": user.email, "avatar_data_url": user.avatar_data_url}}
 
 @app.post("/api/auth/login")
 def login(data: LoginIn, db: Session = Depends(get_db)):
     user = db.query(User).filter(func.lower(User.email) == data.email.lower()).first()
     if not user or not verify_password(data.password, user.hashed_password):
         raise HTTPException(401, "Email or password is incorrect")
-    return {"access_token": create_token(user.id), "token_type": "bearer", "user": {"id": user.id, "name": user.name, "email": user.email}}
+    return {"access_token": create_token(user.id), "token_type": "bearer", "user": {"id": user.id, "name": user.name, "email": user.email, "avatar_data_url": user.avatar_data_url}}
 
 @app.get("/api/auth/me")
 def me(user: User = Depends(current_user)):
-    return {"id": user.id, "name": user.name, "email": user.email}
+    return {"id": user.id, "name": user.name, "email": user.email, "avatar_data_url": user.avatar_data_url}
 
 @app.put("/api/auth/profile")
 def update_profile(data: ProfileUpdateIn, db: Session = Depends(get_db), user: User = Depends(current_user)):
     user.name = data.name.strip()
+    if data.avatar_data_url is not None:
+        if not data.avatar_data_url.startswith(("data:image/jpeg;base64,", "data:image/png;base64,", "data:image/webp;base64,")):
+            raise HTTPException(422, "Profile photo must be a JPEG, PNG, or WebP image")
+        user.avatar_data_url = data.avatar_data_url
     db.commit()
     db.refresh(user)
-    return {"id": user.id, "name": user.name, "email": user.email}
+    return {"id": user.id, "name": user.name, "email": user.email, "avatar_data_url": user.avatar_data_url}
 
 @app.put("/api/auth/password")
 def update_password(data: PasswordUpdateIn, db: Session = Depends(get_db), user: User = Depends(current_user)):
@@ -377,6 +386,88 @@ def parse_csv_content(content: str, preview: bool, db: Session, user: User):
         "rejected": rejected,
         "message": "Review the preview, then upload again with preview=false to import valid rows." if preview else f"Imported {len(accepted)} rows; {len(rejected)} rows need attention.",
     }
+
+@app.post("/api/transactions/import-document-text")
+def import_document_text(data: dict = Body(...), db: Session = Depends(get_db), user: User = Depends(current_user)):
+    content = data.get("text", "")
+    preview = bool(data.get("preview", True))
+    if not isinstance(content, str) or not content.strip():
+        raise HTTPException(422, "No readable text was found. Try a clearer image or text-based PDF.")
+    if len(content) > 1_000_000:
+        raise HTTPException(413, "Extracted document text is too large")
+    existing = {(t.date.isoformat(), t.description.casefold(), round(t.amount, 2), t.transaction_type) for t in tx_query(db, user.id).all()}
+    accepted, rejected, seen = [], [], set()
+    date_re = re.compile(r"(?<!\d)(\d{4}[-/]\d{1,2}[-/]\d{1,2}|\d{1,2}[-/]\d{1,2}[-/]\d{2,4}|\d{1,2}[-\s]+[A-Za-z]{3,9}[-\s]+\d{4})(?!\d)")
+    money_re = re.compile(r"(?<![A-Za-z0-9/#:])[-+]?\s*(?:₹|INR\s*)?\d[\d,]*(?:\.\d{1,2})?(?![A-Za-z0-9/#:])", re.I)
+    credit_words = re.compile(r"\b(cr|credit|credited|deposit|deposited|salary|scholarship|allowance|refund|received)\b", re.I)
+    debit_words = re.compile(r"\b(dr|debit|debited|withdrawal|withdrawn|purchase|paid|payment|spent)\b", re.I)
+    for line_no, raw_line in enumerate(content.splitlines(), 1):
+        line = " ".join(raw_line.split())
+        if not line:
+            continue
+        dm = date_re.search(line)
+        if not dm:
+            continue
+        date_text = dm.group(1)
+        try:
+            if re.match(r"^\d{4}", date_text):
+                parsed_date = date.fromisoformat(date_text.replace("/", "-"))
+            elif re.match(r"^\d{1,2}[-\s]+[A-Za-z]", date_text):
+                try:
+                    parsed_date = datetime.strptime(date_text, "%d %b %Y" if " " in date_text else "%d-%b-%Y").date()
+                except ValueError:
+                    parsed_date = datetime.strptime(date_text, "%d %B %Y" if " " in date_text else "%d-%B-%Y").date()
+            else:
+                day, month, year = map(int, re.split(r"[-/]", date_text))
+                if year < 100:
+                    year += 2000 if year < 70 else 1900
+                parsed_date = date(year, month, day)
+        except ValueError:
+            rejected.append({"row": line_no, "reason": "Could not read this transaction date", "data": {"text": line[:250]}})
+            continue
+        remainder = line[:dm.start()] + " " + line[dm.end():]
+        values = money_re.findall(remainder)
+        parsed_values = []
+        for value in values:
+            cleaned = re.sub(r"[^0-9.+-]", "", value.replace(",", ""))
+            try:
+                number = abs(float(cleaned))
+                if number > 0:
+                    parsed_values.append(number)
+            except ValueError:
+                pass
+        if not parsed_values:
+            rejected.append({"row": line_no, "reason": "No transaction amount could be read", "data": {"text": line[:250]}})
+            continue
+        # In common bank exports, a transaction amount is followed by a running balance.
+        amount = parsed_values[0]
+        typ = "income" if credit_words.search(remainder) else "expense"
+        if debit_words.search(remainder) or re.search(r"-\s*(?:₹|INR\s*)?\d", remainder):
+            typ = "expense"
+        cleaned_description = remainder
+        for value in values:
+            cleaned_description = cleaned_description.replace(value, " ", 1)
+        cleaned_description = re.sub(r"\b(cr|dr|credit|credited|debit|debited|withdrawal|withdrawn|deposit|deposited)\b", " ", cleaned_description, flags=re.I)
+        desc = re.sub(r"\s+", " ", cleaned_description).strip(" -|,;:")[:250]
+        if not desc or len(parsed_values) > 4:
+            rejected.append({"row": line_no, "reason": "Transaction details are ambiguous; review this line manually", "data": {"text": line[:250]}})
+            continue
+        predicted = predict_income_category(desc) if typ == "income" else predict_user_category(db, user.id, desc)
+        category = predicted["category"] if isinstance(predicted, dict) else predicted
+        key = (parsed_date.isoformat(), desc.casefold(), round(amount, 2), typ)
+        if key in existing or key in seen:
+            rejected.append({"row": line_no, "reason": "Duplicate transaction", "data": {"text": line[:250]}})
+            continue
+        seen.add(key)
+        accepted.append({"date": parsed_date.isoformat(), "description": desc, "amount": amount, "transaction_type": typ, "category": category, "source": "document"})
+    if not accepted and not rejected:
+        raise HTTPException(422, "No transaction rows with readable dates were found in this document.")
+    if not preview:
+        for item in accepted:
+            item["date"] = date.fromisoformat(item["date"])
+            db.add(Transaction(user_id=user.id, **item))
+        db.commit()
+    return {"preview": preview, "accepted_count": len(accepted), "rejected_count": len(rejected), "accepted": accepted, "rejected": rejected, "message": "Review the extracted rows before importing. Amounts are estimated from document text." if preview else f"Imported {len(accepted)} rows; {len(rejected)} rows need attention."}
 
 @app.get("/api/transactions/template")
 def csv_template():

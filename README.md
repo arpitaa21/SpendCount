@@ -10,7 +10,7 @@ SpendCount does not require bank credentials, OTPs, or UPI access—ensuring zer
 
 1. **Intelligent Financial Overview**: Real-time snapshot of current balance, month-to-date income and expenses, daily safe-to-spend limit, and dynamic health indicator.
 2. **Transaction Management**: Complete CRUD support with instant search, multi-category filtering, transaction type toggles, date ranges, and pagination.
-3. **Smart CSV Import & Preview**: Upload CSV bank/UPI statements with client-side template download, server-side format and schema validation, duplicate detection, and instant AI category prediction.
+3. **Statement Import & Preview**: Import CSV files, text-based PDFs, and statement images; PDF/image text is extracted on the device, then rows are categorized and shown for review before saving. Duplicate detection and rejected-row explanations are included.
 4. **Machine Learning Categorisation**: TF-IDF + Logistic Regression expense classifier predicting categories with confidence scoring and "Needs Review" fallback for low-confidence transactions.
 5. **Adaptive User Feedback Loop**: When a student manually corrects an AI category suggestion, SpendCount persists the correction and refines a user-specific model in-memory without cross-account data leakage.
 6. **Cash-Flow Runway Forecasting**: Multi-scenario month-end balance prediction comparing moving-average burn rate against linear trend using time-aware chronological holdouts.
@@ -19,10 +19,10 @@ SpendCount does not require bank credentials, OTPs, or UPI access—ensuring zer
 9. **Actionable AI Financial Insights**: 100% data-driven insights highlighting top spending categories, peak spending days, weekly pace comparisons, and 10% discretionary savings calculations.
 10. **Weekly Spending Planner**: Realistic weekly spending budget reserving upcoming mandatory commitments (rent, utilities) and maintaining a conservative safety cushion.
 11. **Category Budget Management**: Monthly category limits with visual progress meters, over-budget warnings, and exhaustion-day projections.
-12. **Profile & Account Settings**: Update display name, change password with old-password verification, inspect and manage AI corrections, and view model transparency metrics.
+12. **Profile & Account Settings**: Update display name, upload a profile photo, choose a saved color palette, configure critical-alert highlighting, change password, and inspect AI corrections and model transparency.
 13. **Model Evaluation & Transparency**: Live endpoint and UI comparing Random Forest Regressor vs Moving Average baseline using chronological 80/20 holdouts (MAE / RMSE metrics).
 14. **Synthetic Student Demo Sandbox**: Pre-seeded demo account (`demo@spendcount.app`) with 210+ transactions over 120 days and seeded outliers.
-15. **Responsive Financial Dashboard**: Modern DM Sans + Manrope UI optimized for mobile, tablet, and desktop screens with dark-mode sidebar branding.
+15. **Responsive Financial Dashboard**: Mobile, tablet, and desktop layouts with a default black, white, and warm-gold dark theme plus saved theme palettes.
 
 ---
 
@@ -193,6 +193,7 @@ The downloadable CSV template uses these columns: `date,description,amount,type,
 - `PUT /api/transactions/{id}` — Edit existing transaction.
 - `DELETE /api/transactions/{id}` — Delete transaction.
 - `POST /api/transactions/import` — CSV batch parsing (`preview=true` for preview report, `preview=false` for commit).
+- `POST /api/transactions/import-document-text` — Preview or import extracted statement text from PDF/image OCR.
 - `GET /api/transactions/template` — Download sample CSV template.
 
 ### Budgets & Income Schedules
@@ -299,6 +300,8 @@ backend\tests\test_ml.py ...                                             [100%]
 - **Multi-Tenant User Isolation**: Every database query is strictly scoped to the authenticated `user_id`. Users cannot view or modify transactions belonging to other students.
 - **Secure Password Hashing**: Passwords are encrypted with PBKDF2-HMAC-SHA256 (240,000 rounds) using a cryptographically random salt.
 - **CSV Upload Limits**: Uploads are restricted to UTF-8 `.csv` files under 5 MB with strict validation to prevent resource exhaustion.
+- **Statement OCR**: Image OCR runs in the browser; English recognition data is downloaded from the Tesseract.js CDN when first needed. Extracted text is sent to SpendCount for parsing and preview. OCR and bank-statement layouts can be imperfect, so verify every row before importing. PDF/image files are limited to 12 MB and 12 pages.
+- **Profile Photos**: Images are resized in the browser and stored as a data URL on the user's profile; only JPEG, PNG, and WebP are accepted.
 - **Secret Protection**: `.env` files, SQLite databases (`*.db`), virtual environments, and build artifacts are strictly excluded by `.gitignore`.
 
 ---

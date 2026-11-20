@@ -1,5 +1,5 @@
 from datetime import datetime, date, timezone
-from sqlalchemy import String, Integer, Float, Date, DateTime, ForeignKey, Boolean, Index, UniqueConstraint
+from sqlalchemy import String, Integer, Float, Date, DateTime, ForeignKey, Boolean, Index, UniqueConstraint, Text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from .database import Base
 
@@ -9,6 +9,7 @@ class User(Base):
     name: Mapped[str] = mapped_column(String(100), nullable=False)
     email: Mapped[str] = mapped_column(String(255), unique=True, index=True, nullable=False)
     hashed_password: Mapped[str] = mapped_column(String(255), nullable=False)
+    avatar_data_url: Mapped[str | None] = mapped_column(Text)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
 
 class Transaction(Base):

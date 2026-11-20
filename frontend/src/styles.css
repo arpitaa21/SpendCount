@@ -308,6 +308,67 @@ body{background:var(--page);color:var(--ink);transition:background-color .18s ea
 :root:not([data-theme="dark"]) .profile-menu{border-color:#cdded5;box-shadow:0 14px 34px #03120e20}
 :root:not([data-theme="dark"]) .profile-menu-item svg{color:#477d6c}
 :root[data-theme="dark"] .profile-menu{border-color:#354555;box-shadow:0 14px 34px #0008}
+
+/* SpendCount palette system: default midnight, ivory, and warm gold. */
+:root[data-theme="dark"]{color-scheme:dark;--page:#080808;--surface:#121212;--surface-raised:#1a1a1a;--ink:#f7f4ec;--muted:#c2bcae;--line:#38342d;--blue:#edbd61;--navy:#050505;--green:#9bcbb0;--amber:#edbd61;--card:#121212;--accent:#edbd61;--gold:#edbd61;--gold-soft:#ffdb91}
+:root[data-theme="dark"] body,:root[data-theme="dark"] .main,:root[data-theme="dark"] .page-wrap{background:var(--page);color:var(--ink)}
+:root[data-theme="dark"] .sidebar{background:#050505;border-color:#292722}
+:root[data-theme="dark"] .topbar{background:#0b0b0bf2;border-color:#302d27}
+:root[data-theme="dark"] .breadcrumbs,:root[data-theme="dark"] .breadcrumbs b{color:#e4dfd2}
+:root[data-theme="dark"] .nav-link{color:#d1ccbf}
+:root[data-theme="dark"] .nav-link:hover{background:#edbd6118;color:#fff8e7}
+:root[data-theme="dark"] .nav-link.active{background:#edbd61;color:#17120a;box-shadow:inset 3px 0 #fff0c8}
+:root[data-theme="dark"] .nav-link.active svg{color:#17120a}
+:root[data-theme="dark"] .brand span,:root[data-theme="dark"] .nav-spark{color:#edbd61}
+:root[data-theme="dark"] .support-card{background:#11100d;border-color:#49402c}
+:root[data-theme="dark"] .support-card a,:root[data-theme="dark"] .text-link,:root[data-theme="dark"] .icon-link,:root[data-theme="dark"] .eyebrow,:root[data-theme="dark"] .form-kicker{color:#edbd61}
+:root[data-theme="dark"] .card,:root[data-theme="dark"] .metric,:root[data-theme="dark"] .chart-card,:root[data-theme="dark"] .transactions-card,:root[data-theme="dark"] .modal,:root[data-theme="dark"] .auth-form,:root[data-theme="dark"] .account-card,:root[data-theme="dark"] .schedule-card,:root[data-theme="dark"] .budget-form-card,:root[data-theme="dark"] .budgets-card,:root[data-theme="dark"] .recurring-card,:root[data-theme="dark"] .suggestion-card,:root[data-theme="dark"] .anomalies-card{background:#121212;border-color:#38342d;color:#f7f4ec}
+:root[data-theme="dark"] .page-title h1,:root[data-theme="dark"] .card-head h3,:root[data-theme="dark"] .metric strong,:root[data-theme="dark"] .forecast-highlight b,:root[data-theme="dark"] .donut-center b,:root[data-theme="dark"] .tx-name b,:root[data-theme="dark"] .alert-item b,:root[data-theme="dark"] .account-identity b{color:#f7f4ec}
+:root[data-theme="dark"] .page-title p,:root[data-theme="dark"] .metric-top,:root[data-theme="dark"] .metric-note,:root[data-theme="dark"] .card-head p,:root[data-theme="dark"] .forecast-highlight span,:root[data-theme="dark"] .forecast-highlight small,:root[data-theme="dark"] .chart-legend,:root[data-theme="dark"] .tx-name small,:root[data-theme="dark"] .alert-item p,:root[data-theme="dark"] .account-identity span{color:#c2bcae}
+:root[data-theme="dark"] .primary-btn,:root[data-theme="dark"] .auth-form .primary-btn{background:#edbd61;color:#18130a;box-shadow:0 5px 18px #edbd6130}
+:root[data-theme="dark"] .primary-btn:hover,:root[data-theme="dark"] .auth-form .primary-btn:hover{background:#ffcf78}
+:root[data-theme="dark"] .secondary-btn,:root[data-theme="dark"] .icon-button,:root[data-theme="dark"] .icon-link,:root[data-theme="dark"] .theme-toggle,:root[data-theme="dark"] .today-chip{background:#171613;border-color:#49402e;color:#f2ead8}
+:root[data-theme="dark"] input,:root[data-theme="dark"] select,:root[data-theme="dark"] textarea,:root[data-theme="dark"] .search-field{background:#0c0c0c;border-color:#49443a;color:#f7f4ec}
+:root[data-theme="dark"] input::placeholder,:root[data-theme="dark"] textarea::placeholder{color:#a9a394}
+:root[data-theme="dark"] .health-banner{background:#17140e;border-color:#534428}
+:root[data-theme="dark"] .health-copy b{color:#fff4d9}
+:root[data-theme="dark"] .health-copy span,:root[data-theme="dark"] .health-confidence{color:#d0c6ae}
+:root[data-theme="dark"] .health-mark,:root[data-theme="dark"] .metric-icon.blue,:root[data-theme="dark"] .empty-illustration,:root[data-theme="dark"] .alert-symbol{background:#302717;color:#ffcf78}
+:root[data-theme="dark"] .metric-icon.green,:root[data-theme="dark"] .clear-icon{background:#18261d;color:#9bcbb0}
+:root[data-theme="dark"] .metric-icon.amber{background:#302717;color:#ffcf78}
+:root[data-theme="dark"] .metric-icon.purple{background:#25201a;color:#e4cda0}
+:root[data-theme="dark"] .forecast-big,:root[data-theme="dark"] .planner-hero{background:linear-gradient(135deg,#080808 0%,#17140e 72%,#282012 100%)}
+:root[data-theme="dark"] .auth-panel{background:linear-gradient(145deg,#050505 0%,#11100d 58%,#282012 100%)}
+:root[data-theme="dark"] .auth-panel:before{background:radial-gradient(circle,#edbd6138 0%,#9c742b20 40%,transparent 72%)}
+:root[data-theme="dark"] .auth-panel:after{background:radial-gradient(circle,#ad7e302c 0%,#34250d1a 46%,transparent 72%)}
+:root[data-theme="dark"] .auth-copy .eyebrow,:root[data-theme="dark"] .auth-form .form-kicker,:root[data-theme="dark"] .auth-switch button{color:#edbd61}
+:root[data-theme="dark"] .auth-copy h1 span{background:linear-gradient(95deg,#f7f4ec 2%,#edbd61 82%);-webkit-background-clip:text;background-clip:text;color:transparent}
+:root[data-theme="dark"] .preview-bars i{background:linear-gradient(180deg,#ffdb91,#c48b32)}
+:root[data-theme="dark"] .auth-form input{background:#0b0b0b;border-color:#49443a;color:#f7f4ec}
+:root[data-theme="dark"] .auth-form input::placeholder{color:#a9a394}
+:root[data-theme="dark"] .profile-menu{background:#121212;border-color:#38342d}
+:root[data-theme="dark"] .profile-menu-item svg{color:#edbd61}
+:root[data-theme="dark"] .profile-menu-item:hover,:root[data-theme="dark"] .profile-menu-item:focus-visible{background:#edbd611f;color:#fff8e7}
+:root[data-theme="dark"] .progress{background:#302d27}:root[data-theme="dark"] .progress i{background:#edbd61}
+:root[data-theme="dark"] .tag,:root[data-theme="dark"] .count-pill{background:#302717;color:#f2d99f}
+:root[data-theme="dark"] .table-scroll th,:root[data-theme="dark"] .table-scroll td{border-color:#38342d!important}
+:root[data-theme="dark"] .recharts-cartesian-grid line{stroke:#38342d!important}:root[data-theme="dark"] .recharts-cartesian-axis-tick-value{fill:#c2bcae!important}
+:root[data-theme="dark"] .auth-form-side{background:radial-gradient(ellipse at 45% 10%,#211b10 0%,#100f0c 54%,#080808 100%)}
+:root[data-theme="dark"] .auth-form{background:#121212;border-color:#38342d}
+:root[data-theme="dark"] .auth-form h2{color:#f7f4ec}:root[data-theme="dark"] .auth-form>p,:root[data-theme="dark"] .auth-switch{color:#c2bcae}
+:root[data-theme="dark"] .auth-form label{color:#e6e0d3}:root[data-theme="dark"] .auth-footer{color:#c2bcae}
+.avatar-image{display:block;width:100%;height:100%;object-fit:cover;border-radius:inherit}.profile .avatar-image,.top-avatar .avatar-image,.account-identity .avatar-image{border-radius:inherit}.profile{ text-decoration:none}.profile-logout{margin-left:auto}.avatar-upload{position:relative;width:max-content;overflow:hidden;cursor:pointer}.avatar-upload input{position:absolute;inset:0;width:100%;height:100%;opacity:0;cursor:pointer}.theme-select-label{display:grid;gap:7px;margin:12px 0 16px;font-size:12px;font-weight:650;color:var(--muted)}.setting-toggle{display:flex;align-items:center;justify-content:space-between;gap:14px;padding:12px;border:1px solid var(--line);border-radius:10px;background:var(--surface-raised);cursor:pointer}.setting-toggle span{display:grid;gap:4px}.setting-toggle b{color:var(--ink);font-size:12px}.setting-toggle small{color:var(--muted);font-size:10px;line-height:1.5}.setting-toggle input{width:18px;height:18px;accent-color:var(--blue);flex:0 0 auto}.document-privacy{margin:10px 0;color:var(--muted);font-size:11px;line-height:1.5}.import-preview{max-height:280px;margin-top:12px}.import-preview td{white-space:nowrap}.account-trigger{display:grid;place-items:center;overflow:hidden}.account-trigger .avatar-image{width:100%;height:100%}.avatar-upload:focus-within{outline:2px solid var(--blue);outline-offset:2px}
+:root[data-alert-highlight="true"] .health-banner,:root[data-alert-highlight="true"] .alert-card{border-color:#edbd61;box-shadow:0 0 0 2px #edbd6130,0 8px 26px #edbd6115}
+:root[data-palette="dark-forest"]{--blue:#8ac5a7;--gold:#8ac5a7;--accent:#8ac5a7;--amber:#8ac5a7}
+:root[data-palette="dark-ocean"]{--blue:#8fc9e8;--gold:#8fc9e8;--accent:#8fc9e8;--amber:#8fc9e8}
+:root[data-palette="light-gold"]{--blue:#9a6c1b;--gold:#b78226;--accent:#b78226;--amber:#9a6c1b}
+:root[data-palette="light-sage"]{--blue:#477d6c;--gold:#477d6c;--accent:#477d6c;--amber:#477d6c}
+:root[data-palette="dark-forest"] .primary-btn,:root[data-palette="dark-ocean"] .primary-btn,:root[data-palette="dark-forest"] .nav-link.active,:root[data-palette="dark-ocean"] .nav-link.active{background:var(--blue);color:#08110c}
+:root[data-palette="dark-forest"] .nav-link.active svg,:root[data-palette="dark-ocean"] .nav-link.active svg{color:#08110c}
+:root[data-palette="dark-forest"] .eyebrow,:root[data-palette="dark-forest"] .text-link,:root[data-palette="dark-forest"] .brand span,:root[data-palette="dark-forest"] .support-card a,:root[data-palette="dark-ocean"] .eyebrow,:root[data-palette="dark-ocean"] .text-link,:root[data-palette="dark-ocean"] .brand span,:root[data-palette="dark-ocean"] .support-card a{color:var(--blue)}
+:root[data-palette="light-gold"] .primary-btn,:root[data-palette="light-sage"] .primary-btn{background:var(--blue);color:#fff}
+:root[data-palette="light-gold"] .eyebrow,:root[data-palette="light-gold"] .text-link,:root[data-palette="light-sage"] .eyebrow,:root[data-palette="light-sage"] .text-link{color:var(--blue)}
+@media(max-width:620px){.avatar-upload{width:100%;justify-content:center}.theme-select-label select{width:100%}}
 :root[data-theme="dark"] .profile-menu-item{color:#edf2f7}
 :root[data-theme="dark"] .profile-menu-item:hover,:root[data-theme="dark"] .profile-menu-item:focus-visible{background:#263548;color:#fff}
 @media(prefers-reduced-motion:reduce){.profile-menu{animation:none}.account-trigger{transition:none}}

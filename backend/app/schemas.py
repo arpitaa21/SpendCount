@@ -16,6 +16,7 @@ class LoginIn(BaseModel):
 
 class ProfileUpdateIn(BaseModel):
     name: str = Field(min_length=2, max_length=100)
+    avatar_data_url: str | None = Field(default=None, max_length=1500000)
 
 class PasswordUpdateIn(BaseModel):
     old_password: str
