@@ -8,9 +8,9 @@ import os
 from fastapi import FastAPI, Depends, HTTPException, UploadFile, File, Query
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
-from sqlalchemy import select, func
+from sqlalchemy import select, func, case, text
 from .database import Base, engine, get_db
-from .models import User, Transaction, Budget, IncomeSchedule, Forecast, CategoryCorrection
+from .models import User, Transaction, Budget, IncomeSchedule, Forecast, Alert, PlannedCommitment, PlanningSetting, CategoryCorrection
 from .schemas import (
     RegisterIn,
     LoginIn,
@@ -20,6 +20,8 @@ from .schemas import (
     TransactionOut,
     BudgetIn,
     ScheduleIn,
+    CommitmentIn,
+    PlanningSettingsIn,
     EXPENSE_CATEGORIES,
     INCOME_CATEGORIES,
 )
@@ -30,6 +32,22 @@ from .ml.anomaly_detection import find_anomalies
 from .ml.recommendations import weekly_plan
 
 Base.metadata.create_all(bind=engine)
+# create_all does not alter existing tables, so keep the small additive schema
+# changes safe for existing SQLite and PostgreSQL deployments.
+with engine.begin() as _connection:
+    if engine.dialect.name == "postgresql":
+        _connection.execute(text("ALTER TABLE alerts ADD COLUMN IF NOT EXISTS alert_key VARCHAR(120) NOT NULL DEFAULT 'legacy'"))
+        _connection.execute(text("ALTER TABLE alerts ADD COLUMN IF NOT EXISTS snoozed_until DATE"))
+        _connection.execute(text("ALTER TABLE alerts ADD COLUMN IF NOT EXISTS is_active BOOLEAN NOT NULL DEFAULT TRUE"))
+    else:
+        _columns = {column["name"] for column in __import__("sqlalchemy").inspect(_connection).get_columns("alerts")}
+        for _column, _definition in (("alert_key", "VARCHAR(120) NOT NULL DEFAULT 'legacy'"), ("snoozed_until", "DATE"), ("is_active", "BOOLEAN NOT NULL DEFAULT TRUE")):
+            if _column not in _columns:
+                _connection.execute(text(f"ALTER TABLE alerts ADD COLUMN {_column} {_definition}"))
+    try:
+        _connection.execute(text("CREATE UNIQUE INDEX IF NOT EXISTS uq_alert_user_key ON alerts (user_id, alert_key) WHERE alert_key <> 'legacy'"))
+    except Exception:
+        pass
 app = FastAPI(title="SpendCount API", version="1.0.0", description="Student cash-flow intelligence and budgeting API")
 
 cors_origins_env = os.getenv("CORS_ORIGINS", "http://localhost:5173,http://localhost:3000,http://127.0.0.1:5173")
@@ -58,6 +76,12 @@ def month_bounds(d=None):
 def running_balance(items, as_of=None):
     as_of = as_of or date.today()
     return sum(t.amount if t.transaction_type == "income" else -t.amount for t in items if t.date <= as_of)
+
+def balance_for(user_id, db, as_of=None):
+    query = db.query(func.coalesce(func.sum(case((Transaction.transaction_type == "income", Transaction.amount), else_=-Transaction.amount)), 0.0)).filter(Transaction.user_id == user_id)
+    if as_of is not None:
+        query = query.filter(Transaction.date <= as_of)
+    return float(query.scalar() or 0)
 
 def advance_income_date(schedule, occurrence):
     frequency = schedule.recurring_frequency
@@ -118,16 +142,17 @@ def recurring_expense_events(items, today, end):
     return sorted(events, key=lambda event: event["date"]), observed
 
 def forecast_for(user_id, db):
-    items = tx_query(db, user_id).order_by(Transaction.date).all()
     today = date.today()
     start, end = month_bounds(today)
     days = (end - today).days
-    expenses = [t for t in items if t.transaction_type == "expense"]
+    history_start = today - timedelta(days=179)
+    daily_rows = db.query(Transaction.date, func.sum(Transaction.amount)).filter(Transaction.user_id == user_id, Transaction.transaction_type == "expense", Transaction.date >= today - timedelta(days=89), Transaction.date <= today).group_by(Transaction.date).all()
     all_dates = [today - timedelta(days=i) for i in range(89, -1, -1)]
     by_day = {d: 0.0 for d in all_dates}
-    for tx in expenses:
-        if tx.date in by_day:
-            by_day[tx.date] += tx.amount
+    for tx_date, amount in daily_rows:
+        by_day[tx_date] = float(amount or 0)
+    expenses = tx_query(db, user_id).filter(Transaction.transaction_type == "expense", Transaction.date >= history_start, Transaction.date <= end).order_by(Transaction.date).all()
+    items = expenses
     schedules = db.query(IncomeSchedule).filter(IncomeSchedule.user_id == user_id).order_by(IncomeSchedule.expected_date).all()
     expected_events = income_events(schedules, today, end)
     upcoming = None
@@ -148,7 +173,7 @@ def forecast_for(user_id, db):
         if tx.id in recurring_observed and tx.date in by_day:
             by_day[tx.date] = max(0, by_day[tx.date] - recurring_observed[tx.id])
     daily = list(by_day.values())
-    current = running_balance(items)
+    current = balance_for(user_id, db, today)
     next_days = (upcoming.expected_date - today).days if upcoming else None
     expected = sum(event["amount"] for event in expected_events)
     result = forecast(daily, current, days, next_days, expected)
@@ -362,16 +387,17 @@ def csv_template():
 
 @app.get("/api/dashboard/summary")
 def dashboard_summary(db: Session = Depends(get_db), user: User = Depends(current_user)):
-    items = tx_query(db, user.id).order_by(Transaction.date).all()
     today = date.today()
     start, end = month_bounds(today)
-    month = [t for t in items if start <= t.date <= today]
-    income = sum(t.amount for t in month if t.transaction_type == "income")
-    spent = sum(t.amount for t in month if t.transaction_type == "expense")
+    row = db.query(
+        func.coalesce(func.sum(case((Transaction.transaction_type == "income", Transaction.amount), else_=0)), 0),
+        func.coalesce(func.sum(case((Transaction.transaction_type == "expense", Transaction.amount), else_=0)), 0),
+    ).filter(Transaction.user_id == user.id, Transaction.date >= start, Transaction.date <= today).one()
+    income, spent = float(row[0]), float(row[1])
     fc, _, upcoming = forecast_for(user.id, db)
     budgets = db.query(Budget).filter(Budget.user_id == user.id).all()
     limit = sum(b.monthly_limit for b in budgets)
-    current = running_balance(items)
+    current = balance_for(user.id, db, today)
     remaining_days = (end - today).days
     health = "On track" if fc["predicted_end_balance"] > 0 and (not limit or spent < limit * 0.8) else "Needs attention"
     return {
@@ -394,28 +420,31 @@ def dashboard_summary(db: Session = Depends(get_db), user: User = Depends(curren
 @app.get("/api/dashboard/spending-breakdown")
 def spending_breakdown(db: Session = Depends(get_db), user: User = Depends(current_user)):
     start, _ = month_bounds()
-    rows = tx_query(db, user.id).filter(Transaction.date >= start, Transaction.transaction_type == "expense").all()
-    totals = {}
-    for t in rows:
-        totals[t.category] = totals.get(t.category, 0) + t.amount
-    return [{"category": k, "amount": round(v, 2)} for k, v in sorted(totals.items(), key=lambda x: -x[1])]
+    rows = db.query(Transaction.category, func.sum(Transaction.amount).label("amount")).filter(Transaction.user_id == user.id, Transaction.date >= start, Transaction.transaction_type == "expense").group_by(Transaction.category).order_by(func.sum(Transaction.amount).desc()).all()
+    return [{"category": category, "amount": round(float(amount), 2)} for category, amount in rows]
 
 @app.get("/api/dashboard/spending-trends")
 def spending_trends(db: Session = Depends(get_db), user: User = Depends(current_user)):
     today = date.today()
     first = today.replace(day=1)
-    items = tx_query(db, user.id).filter(Transaction.date >= first).all()
+    items = db.query(Transaction.date, Transaction.transaction_type, func.sum(Transaction.amount)).filter(Transaction.user_id == user.id, Transaction.date >= first, Transaction.date <= today).group_by(Transaction.date, Transaction.transaction_type).all()
     daily = {}
     for i in range((today - first).days + 1):
         daily[(first + timedelta(days=i)).isoformat()] = {"date": (first + timedelta(days=i)).isoformat(), "income": 0, "expenses": 0}
-    for t in items:
-        if t.date.isoformat() in daily:
-            daily[t.date.isoformat()]["income" if t.transaction_type == "income" else "expenses"] += t.amount
+    for tx_date, tx_type, amount in items:
+        if tx_date.isoformat() in daily:
+            daily[tx_date.isoformat()]["income" if tx_type == "income" else "expenses"] += float(amount or 0)
     return list(daily.values())
 
 @app.get("/api/budgets")
 def get_budgets(db: Session = Depends(get_db), user: User = Depends(current_user)):
     return db.query(Budget).filter(Budget.user_id == user.id).order_by(Budget.category).all()
+
+@app.get("/api/budgets/usage")
+def budget_usage(db: Session = Depends(get_db), user: User = Depends(current_user)):
+    start, today = month_bounds()
+    rows = db.query(Transaction.category, func.sum(Transaction.amount)).filter(Transaction.user_id == user.id, Transaction.transaction_type == "expense", Transaction.date >= start, Transaction.date <= today).group_by(Transaction.category).all()
+    return {category: round(float(amount or 0), 2) for category, amount in rows}
 
 @app.post("/api/budgets", status_code=201)
 def create_budget(data: BudgetIn, db: Session = Depends(get_db), user: User = Depends(current_user)):
@@ -470,6 +499,42 @@ def delete_schedule(schedule_id: int, db: Session = Depends(get_db), user: User 
     db.delete(item)
     db.commit()
 
+@app.get("/api/planning/commitments")
+def list_commitments(db: Session = Depends(get_db), user: User = Depends(current_user)):
+    return db.query(PlannedCommitment).filter(PlannedCommitment.user_id == user.id).order_by(PlannedCommitment.due_date).all()
+
+@app.post("/api/planning/commitments", status_code=201)
+def add_commitment(data: CommitmentIn, db: Session = Depends(get_db), user: User = Depends(current_user)):
+    item = PlannedCommitment(user_id=user.id, **data.model_dump())
+    db.add(item)
+    db.commit()
+    db.refresh(item)
+    return item
+
+@app.delete("/api/planning/commitments/{commitment_id}", status_code=204)
+def delete_commitment(commitment_id: int, db: Session = Depends(get_db), user: User = Depends(current_user)):
+    item = db.query(PlannedCommitment).filter(PlannedCommitment.id == commitment_id, PlannedCommitment.user_id == user.id).first()
+    if not item:
+        raise HTTPException(404, "Commitment not found")
+    db.delete(item)
+    db.commit()
+
+@app.get("/api/planning/settings")
+def get_planning_settings(db: Session = Depends(get_db), user: User = Depends(current_user)):
+    row = db.query(PlanningSetting).filter(PlanningSetting.user_id == user.id).first()
+    return {"emergency_buffer_target": row.emergency_buffer_target if row else 0}
+
+@app.put("/api/planning/settings")
+def update_planning_settings(data: PlanningSettingsIn, db: Session = Depends(get_db), user: User = Depends(current_user)):
+    row = db.query(PlanningSetting).filter(PlanningSetting.user_id == user.id).first()
+    if row is None:
+        row = PlanningSetting(user_id=user.id, emergency_buffer_target=data.emergency_buffer_target)
+        db.add(row)
+    else:
+        row.emergency_buffer_target = data.emergency_buffer_target
+    db.commit()
+    return {"emergency_buffer_target": row.emergency_buffer_target}
+
 @app.get("/api/forecast/month-end")
 def month_end(db: Session = Depends(get_db), user: User = Depends(current_user)):
     result, _, _ = forecast_for(user.id, db)
@@ -479,7 +544,7 @@ def month_end(db: Session = Depends(get_db), user: User = Depends(current_user))
 def cash_flow(db: Session = Depends(get_db), user: User = Depends(current_user)):
     result, items, _ = forecast_for(user.id, db)
     today = date.today()
-    balance = running_balance(items)
+    balance = balance_for(user.id, db, today)
     daily = result["daily_spend_rate"]
     points = []
     for n in range(0, result["days_remaining"] + 1, max(1, result["days_remaining"] // 12)):
@@ -526,11 +591,8 @@ def anomalies(db: Session = Depends(get_db), user: User = Depends(current_user))
 def personalized_alerts(db: Session = Depends(get_db), user: User = Depends(current_user)):
     today = date.today()
     start, end = month_bounds(today)
-    items = tx_query(db, user.id).all()
-    expenses = [item for item in items if item.transaction_type == "expense" and start <= item.date <= today]
-    spent_by_category = {}
-    for item in expenses:
-        spent_by_category[item.category] = spent_by_category.get(item.category, 0) + item.amount
+    spent_rows = db.query(Transaction.category, func.sum(Transaction.amount)).filter(Transaction.user_id == user.id, Transaction.transaction_type == "expense", Transaction.date >= start, Transaction.date <= today).group_by(Transaction.category).all()
+    spent_by_category = {category: float(amount or 0) for category, amount in spent_rows}
     days_elapsed = today.day
     days_left = (end - today).days
     alerts = []
@@ -554,25 +616,64 @@ def personalized_alerts(db: Session = Depends(get_db), user: User = Depends(curr
     if fc["daily_spend_rate"] > fc["daily_safe_limit"] > 0:
         alerts.append({"alert_id": "daily-spending-pace", "title": "Spending pace is above your daily guide", "description": f"Your recent average is ₹{fc['daily_spend_rate']:,.0f} a day, above the estimated safe limit of ₹{fc['daily_safe_limit']:,.0f}.", "severity": "warning", "amount": fc["daily_spend_rate"]})
     priority = {"critical": 0, "warning": 1, "info": 2}
-    return sorted(alerts, key=lambda alert: (priority[alert["severity"]], alert["alert_id"]))[:6]
+    alerts = sorted(alerts, key=lambda alert: (priority[alert["severity"]], alert["alert_id"]))[:6]
+    db.query(Alert).filter(Alert.user_id == user.id).update({Alert.is_active: False}, synchronize_session=False)
+    results = []
+    for data in alerts:
+        key = data["alert_id"]
+        record = db.query(Alert).filter(Alert.user_id == user.id, Alert.alert_key == key).first()
+        if record is None:
+            record = Alert(user_id=user.id, alert_key=key, alert_type=key.split("-")[0], **{k: data[k] for k in ("title", "description", "severity")})
+            db.add(record)
+        else:
+            record.title, record.description, record.severity = data["title"], data["description"], data["severity"]
+            record.is_active = True
+        if record.snoozed_until and record.snoozed_until < today:
+            record.snoozed_until = None
+        db.flush()
+        if not record.snoozed_until or record.snoozed_until < today:
+            results.append({**data, "id": record.id, "is_read": record.is_read, "snoozed_until": record.snoozed_until.isoformat() if record.snoozed_until else None})
+    db.commit()
+    return results
+
+@app.get("/api/alerts")
+def list_persisted_alerts(db: Session = Depends(get_db), user: User = Depends(current_user)):
+    personalized_alerts(db, user)
+    rows = db.query(Alert).filter(Alert.user_id == user.id, Alert.is_active.is_(True), (Alert.snoozed_until.is_(None) | (Alert.snoozed_until < date.today()))).order_by(Alert.is_read, Alert.created_at.desc()).all()
+    return [{"id": row.id, "alert_id": row.alert_key, "title": row.title, "description": row.description, "severity": row.severity, "is_read": row.is_read, "snoozed_until": row.snoozed_until.isoformat() if row.snoozed_until else None, "created_at": row.created_at.isoformat()} for row in rows]
+
+@app.patch("/api/alerts/{alert_id}/read")
+def mark_alert_read(alert_id: int, db: Session = Depends(get_db), user: User = Depends(current_user)):
+    row = db.query(Alert).filter(Alert.id == alert_id, Alert.user_id == user.id).first()
+    if not row:
+        raise HTTPException(404, "Alert not found")
+    row.is_read = True
+    db.commit()
+    return {"id": row.id, "is_read": row.is_read}
+
+@app.post("/api/alerts/{alert_id}/snooze")
+def snooze_alert(alert_id: int, days: int = Query(7, ge=1, le=30), db: Session = Depends(get_db), user: User = Depends(current_user)):
+    row = db.query(Alert).filter(Alert.id == alert_id, Alert.user_id == user.id).first()
+    if not row:
+        raise HTTPException(404, "Alert not found")
+    row.snoozed_until = date.today() + timedelta(days=days)
+    row.is_read = True
+    db.commit()
+    return {"id": row.id, "snoozed_until": row.snoozed_until.isoformat()}
 
 @app.get("/api/ai/insights")
 def insights(db: Session = Depends(get_db), user: User = Depends(current_user)):
-    items = tx_query(db, user.id).all()
-    expenses = [t for t in items if t.transaction_type == "expense"]
-    if not expenses:
+    expenses_query = tx_query(db, user.id).filter(Transaction.transaction_type == "expense")
+    expense_count = expenses_query.count()
+    if not expense_count:
         return {"empty": True, "insights": []}
     today = date.today()
     start, end = month_bounds(today)
-    month = [t for t in expenses if start <= t.date <= today]
-    totals = {}
-    daytotals = {}
-    for t in month:
-        totals[t.category] = totals.get(t.category, 0) + t.amount
-        daytotals[t.date] = daytotals.get(t.date, 0) + t.amount
+    totals = {category: float(amount or 0) for category, amount in db.query(Transaction.category, func.sum(Transaction.amount)).filter(Transaction.user_id == user.id, Transaction.transaction_type == "expense", Transaction.date >= start, Transaction.date <= today).group_by(Transaction.category).all()}
+    daytotals = {tx_date: float(amount or 0) for tx_date, amount in db.query(Transaction.date, func.sum(Transaction.amount)).filter(Transaction.user_id == user.id, Transaction.transaction_type == "expense", Transaction.date >= start, Transaction.date <= today).group_by(Transaction.date).all()}
     top = max(totals, key=totals.get) if totals else None
-    last7 = sum(t.amount for t in expenses if t.date >= today - timedelta(days=6))
-    prev7 = sum(t.amount for t in expenses if today - timedelta(days=13) <= t.date < today - timedelta(days=6))
+    last7 = float(expenses_query.filter(Transaction.date >= today - timedelta(days=6), Transaction.date <= today).with_entities(func.coalesce(func.sum(Transaction.amount), 0)).scalar() or 0)
+    prev7 = float(expenses_query.filter(Transaction.date >= today - timedelta(days=13), Transaction.date < today - timedelta(days=6)).with_entities(func.coalesce(func.sum(Transaction.amount), 0)).scalar() or 0)
     fc, _, _ = forecast_for(user.id, db)
     insights_list = []
     if top:
@@ -586,11 +687,8 @@ def insights(db: Session = Depends(get_db), user: User = Depends(current_user)):
     })
     if fc["predicted_end_balance"] < 0:
         insights_list.append({"title": "Cash-flow pinch ahead", "detail": f"Current spending pace projects a ₹{abs(fc['predicted_end_balance']):,.0f} shortfall by month end, excluding unconfirmed income."})
-    recurring = {}
-    for t in expenses:
-        key = t.description.lower().strip()
-        recurring.setdefault(key, []).append(t)
-    repeats = [{"description": v[0].description, "count": len(v), "total": round(sum(x.amount for x in v), 2)} for v in recurring.values() if len(v) >= 3]
+    recurring_rows = db.query(func.min(Transaction.description), func.count(Transaction.id), func.sum(Transaction.amount)).filter(Transaction.user_id == user.id, Transaction.transaction_type == "expense").group_by(func.lower(func.trim(Transaction.description))).having(func.count(Transaction.id) >= 3).order_by(func.sum(Transaction.amount).desc()).limit(5).all()
+    repeats = [{"description": description, "count": int(count), "total": round(float(total), 2)} for description, count, total in recurring_rows]
     budgets = {b.category: b.monthly_limit for b in db.query(Budget).filter(Budget.user_id == user.id).all()}
     elapsed = max(1, today.day)
     month_days = end.day
@@ -607,13 +705,13 @@ def insights(db: Session = Depends(get_db), user: User = Depends(current_user)):
     for weeks_ago in range(3, -1, -1):
         week_end = today - timedelta(days=weeks_ago * 7)
         week_start = week_end - timedelta(days=6)
-        amount = sum(t.amount for t in expenses if week_start <= t.date <= week_end)
+        amount = float(expenses_query.filter(Transaction.date >= week_start, Transaction.date <= week_end).with_entities(func.coalesce(func.sum(Transaction.amount), 0)).scalar() or 0)
         weekly_spending.append({"week": "This week" if weeks_ago == 0 else f"{weeks_ago} wk ago", "amount": round(amount, 2)})
     return {
         "empty": False,
         "highest_category": top,
         "most_expensive_day": max(daytotals, key=daytotals.get).isoformat() if daytotals else None,
-        "average_daily_spending": round(sum(t.amount for t in expenses) / max(1, (today - min(t.date for t in expenses)).days + 1), 2),
+        "average_daily_spending": round(float(expenses_query.with_entities(func.coalesce(func.sum(Transaction.amount), 0)).scalar() or 0) / max(1, (today - expenses_query.with_entities(func.min(Transaction.date)).scalar()).days + 1), 2),
         "week_over_week_change_pct": round((last7 - prev7) / prev7 * 100, 1) if prev7 else None,
         "recurring_expenses": repeats[:5],
         "weekly_spending": weekly_spending,
@@ -623,19 +721,47 @@ def insights(db: Session = Depends(get_db), user: User = Depends(current_user)):
     }
 
 @app.get("/api/ai/weekly-plan")
-def get_weekly_plan(db: Session = Depends(get_db), user: User = Depends(current_user)):
+def get_weekly_plan(db: Session = Depends(get_db), user: User = Depends(current_user), delay_income_days: int = 0):
+    if not 0 <= delay_income_days <= 30:
+        raise HTTPException(422, "Income delay must be between 0 and 30 days")
     fc, items, upcoming = forecast_for(user.id, db)
     today = date.today()
-    balance = running_balance(items)
+    balance = balance_for(user.id, db, today)
     budgets = db.query(Budget).filter(Budget.user_id == user.id).all()
-    spent = {}
     first, _ = month_bounds(today)
-    for t in items:
-        if t.transaction_type == "expense" and t.date >= first:
-            spent[t.category] = spent.get(t.category, 0) + t.amount
+    spent_rows = db.query(Transaction.category, func.sum(Transaction.amount)).filter(Transaction.user_id == user.id, Transaction.transaction_type == "expense", Transaction.date >= first, Transaction.date <= today).group_by(Transaction.category).all()
+    spent = {category: float(amount or 0) for category, amount in spent_rows}
     days = (upcoming.expected_date - today).days if upcoming else min(7, month_bounds(today)[1].day - today.day)
+    days = max(0, days) + delay_income_days
     mandatory = sum(b.monthly_limit * 0.08 for b in budgets if b.category in ("Rent and Hostel", "Subscriptions"))
-    return weekly_plan(balance, days, fc["daily_spend_rate"], {b.category: b.monthly_limit for b in budgets}, spent, mandatory)
+    commitment_rows = db.query(PlannedCommitment).filter(PlannedCommitment.user_id == user.id).all()
+    commitments = []
+    commitment_total = 0.0
+    for item in commitment_rows:
+        occurrence = item.due_date
+        if occurrence < today and item.recurring_frequency == "one-time":
+            continue
+        while occurrence < today:
+            occurrence = occurrence + timedelta(days=7) if item.recurring_frequency == "weekly" else advance_income_date(SimpleNamespace(recurring_frequency="monthly"), occurrence)
+        while occurrence <= today + timedelta(days=30):
+            commitments.append({"id": item.id, "title": item.title, "category": item.category, "amount": item.amount, "due_date": occurrence.isoformat()})
+            if occurrence <= today + timedelta(days=7):
+                commitment_total += item.amount
+            if item.recurring_frequency == "weekly": occurrence += timedelta(days=7)
+            elif item.recurring_frequency == "monthly": occurrence = advance_income_date(SimpleNamespace(recurring_frequency="monthly"), occurrence)
+            else: break
+    setting = db.query(PlanningSetting).filter(PlanningSetting.user_id == user.id).first()
+    buffer_target = setting.emergency_buffer_target if setting else 0
+    plan = weekly_plan(balance, days, fc["daily_spend_rate"], {b.category: b.monthly_limit for b in budgets}, spent, mandatory + commitment_total + buffer_target / 4)
+    if delay_income_days:
+        scenario_factor = 7 / (7 + delay_income_days * 0.5)
+        plan["weekly_budget"] = round(plan["weekly_budget"] * scenario_factor, 2)
+        plan["daily_limit"] = round(plan["weekly_budget"] / min(max(1, days), 7), 2)
+        for suggestion in plan["suggestions"]:
+            suggestion["weekly_target"] = round(suggestion["weekly_target"] * scenario_factor, 2)
+        plan["explanation"] += f" This late-income scenario trims the flexible cap by {round((1 - scenario_factor) * 100)}% to extend your runway."
+    plan.update({"delay_income_days": delay_income_days, "income_delay_scenario": "Current schedule" if not delay_income_days else f"If expected income arrives {delay_income_days} days late", "commitments_next_week": commitments, "commitments_reserved": round(commitment_total, 2), "protected_upcoming_expenses": round(mandatory + commitment_total, 2), "emergency_buffer_target": round(buffer_target, 2), "emergency_buffer_gap": round(max(0, buffer_target - max(0, balance)), 2), "current_balance": round(balance, 2)})
+    return plan
 
 @app.get("/api/ai/model-evaluation")
 def model_evaluation(db: Session = Depends(get_db), user: User = Depends(current_user)):

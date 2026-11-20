@@ -44,3 +44,13 @@ class ScheduleIn(BaseModel):
     expected_amount: float = Field(gt=0)
     expected_date: date
     recurring_frequency: Literal["one-time", "weekly", "monthly", "semester"] = "one-time"
+
+class CommitmentIn(BaseModel):
+    title: str = Field(min_length=2, max_length=120)
+    category: str = Field(default="Other", max_length=40)
+    amount: float = Field(gt=0, le=100000000)
+    due_date: date
+    recurring_frequency: Literal["one-time", "weekly", "monthly"] = "one-time"
+
+class PlanningSettingsIn(BaseModel):
+    emergency_buffer_target: float = Field(ge=0, le=100000000)

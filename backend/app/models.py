@@ -65,7 +65,29 @@ class Alert(Base):
     description: Mapped[str] = mapped_column(String(500), nullable=False)
     severity: Mapped[str] = mapped_column(String(20), default="info")
     is_read: Mapped[bool] = mapped_column(Boolean, default=False)
+    alert_key: Mapped[str] = mapped_column(String(120), nullable=False, default="legacy")
+    snoozed_until: Mapped[date | None] = mapped_column(Date)
+    is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
+    __table_args__ = (UniqueConstraint("user_id", "alert_key", name="uq_alert_user_key"),)
+
+class PlannedCommitment(Base):
+    __tablename__ = "planned_commitments"
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), index=True, nullable=False)
+    title: Mapped[str] = mapped_column(String(120), nullable=False)
+    category: Mapped[str] = mapped_column(String(40), nullable=False, default="Other")
+    amount: Mapped[float] = mapped_column(Float, nullable=False)
+    due_date: Mapped[date] = mapped_column(Date, nullable=False, index=True)
+    recurring_frequency: Mapped[str] = mapped_column(String(20), nullable=False, default="one-time")
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
+
+class PlanningSetting(Base):
+    __tablename__ = "planning_settings"
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), unique=True, index=True, nullable=False)
+    emergency_buffer_target: Mapped[float] = mapped_column(Float, nullable=False, default=0)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
 
 class CategoryCorrection(Base):
     __tablename__ = "category_corrections"

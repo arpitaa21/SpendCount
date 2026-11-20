@@ -217,9 +217,18 @@ The downloadable CSV template uses these columns: `date,description,amount,type,
 - `GET /api/ai/corrections` — List student's recorded manual category corrections.
 - `DELETE /api/ai/corrections/{id}` — Remove correction record from personal feedback queue.
 - `GET /api/ai/anomalies` — Isolation Forest amount outliers and weekly surge patterns.
-- `GET /api/ai/alerts` — Real-time budget pace, cash-flow shortfall, and daily spending alerts.
+- `GET /api/ai/alerts` — Generate and persist current budget pace, cash-flow shortfall, and daily spending alerts.
+- `GET /api/alerts` — List active alerts with read and snooze state.
+- `PATCH /api/alerts/{id}/read` and `POST /api/alerts/{id}/snooze?days=7` — Manage alert state per account.
 - `GET /api/ai/insights` — Dynamic text insights, recurring patterns, and 10% savings opportunities.
-- `GET /api/ai/weekly-plan` — Conservative weekly budget cap reserving mandatory commitments.
+- `GET /api/ai/weekly-plan?delay_income_days=7` — Conservative weekly plan with an optional late-income scenario.
+- `GET|POST /api/planning/commitments`, `DELETE /api/planning/commitments/{id}` — Track upcoming and recurring bills.
+- `GET|PUT /api/planning/settings` — Read or set the emergency-buffer target.
+- `GET /api/budgets/usage` — Current month category totals aggregated in SQL.
+
+Dashboard summary, category breakdown, daily trends, budget usage, alert budget checks, and insight rollups use SQL aggregates to avoid loading every transaction into Python. Forecasting reads daily totals from SQL and bounds the transaction detail used for recurring expense detection to the most recent 180 days.
+
+For existing databases, `backend/migrations/002_planning_and_persistent_alerts.sql` contains the additive schema migration. The API also creates the new planning tables and adds alert state columns idempotently at startup for the existing Vercel setup.
 - `GET /api/ai/model-evaluation` — Chronological 80/20 holdout evaluation metrics (Random Forest vs Moving Average).
 
 ### System & Health
