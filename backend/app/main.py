@@ -233,6 +233,13 @@ def update_profile(data: ProfileUpdateIn, db: Session = Depends(get_db), user: U
     db.refresh(user)
     return {"id": user.id, "name": user.name, "email": user.email, "avatar_data_url": user.avatar_data_url}
 
+@app.delete("/api/auth/profile/avatar")
+def remove_profile_avatar(db: Session = Depends(get_db), user: User = Depends(current_user)):
+    user.avatar_data_url = None
+    db.commit()
+    db.refresh(user)
+    return {"id": user.id, "name": user.name, "email": user.email, "avatar_data_url": user.avatar_data_url}
+
 @app.put("/api/auth/password")
 def update_password(data: PasswordUpdateIn, db: Session = Depends(get_db), user: User = Depends(current_user)):
     if not verify_password(data.old_password, user.hashed_password):
