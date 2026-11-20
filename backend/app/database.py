@@ -6,7 +6,12 @@ from sqlalchemy.orm import DeclarativeBase, sessionmaker
 from sqlalchemy.pool import StaticPool, NullPool
 
 load_dotenv(Path(__file__).resolve().parents[1] / ".env")
-DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///./spendcount.db")
+DATABASE_URL = (
+    os.getenv("NEON_DATABASE_URL")
+    or os.getenv("NEON_POSTGRES_URL")
+    or os.getenv("DATABASE_URL")
+    or "sqlite:///./spendcount.db"
+)
 
 # Normalize PostgreSQL schemes for psycopg
 if DATABASE_URL.startswith("postgres://"):
