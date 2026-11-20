@@ -163,7 +163,12 @@ def forecast_for(user_id, db):
 
 @app.get("/api/health")
 def health():
-    return {"status": "ok", "service": "SpendCount API", "version": "1.0.0"}
+    try:
+        with engine.connect() as connection:
+            connection.execute(select(1))
+    except Exception as exc:
+        raise HTTPException(503, "Database unavailable") from exc
+    return {"status": "ok", "service": "SpendCount API", "version": "1.0.0", "database": engine.dialect.name}
 
 @app.post("/api/auth/register")
 def register(data: RegisterIn, db: Session = Depends(get_db)):
