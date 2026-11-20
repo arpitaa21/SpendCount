@@ -589,3 +589,10 @@ input:focus,select:focus,textarea:focus{border-color:var(--theme-accent)!importa
 .alert-card.has-alerts .alert-actions button:hover{background:var(--alert-accent);border-color:var(--alert-border);color:#211805}
 @media(max-width:620px){.alert-card.has-alerts{box-shadow:0 0 0 2px color-mix(in srgb,var(--alert-accent) 23%,transparent),0 8px 18px color-mix(in srgb,var(--alert-accent) 14%,transparent)!important}}
 .avatar-actions{display:flex;flex-wrap:wrap;gap:9px;margin:10px 0 4px}.avatar-actions .avatar-upload{margin:0}.avatar-actions button:disabled{opacity:.65;cursor:wait}
+
+/* Login hero follows the same forest surface as the sign-in card in dark mode. */
+:root[data-theme="dark"] .auth-panel{background:#0c1c16!important}
+:root[data-theme="dark"] .auth-panel:before{background:radial-gradient(circle,#7dab9f1c 0%,transparent 72%)!important}
+:root[data-theme="dark"] .auth-panel:after{background:radial-gradient(circle,#7dab9f12 0%,transparent 72%)!important}
+:root[data-theme="dark"] .auth-panel .brand span,:root[data-theme="dark"] .auth-copy .eyebrow{color:#a9cfbd!important}
+:root[data-theme="dark"] .auth-copy h1 span{background:none!important;color:#a9cfbd!important;-webkit-text-fill-color:#a9cfbd}

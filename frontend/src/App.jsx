@@ -25,7 +25,7 @@ function App(){
  if(!user)return <Routes><Route path="*" element={<Auth onLogin={setUser} theme={theme} onThemeToggle={()=>setTheme(t=>t.startsWith('dark')?'light-gold':'dark-gold')}/>}/></Routes>;
  return <div className="app-shell">
   <aside className={`sidebar ${menu?'open':''}`}>
-   <div className="brand"><div className="brand-mark"><img className="brand-icon-image" src="/icons/icon-192.png?v=2" alt=""/></div><div>Spend<span>Count</span><small>STUDENT FINANCE</small></div><button className="mobile-close" onClick={()=>setMenu(false)} aria-label="Close navigation"><X size={18}/></button></div>
+   <div className="brand"><div className="brand-mark"><img className="brand-icon-image" src="/icons/icon-192.png?v=3" alt=""/></div><div>Spend<span>Count</span><small>STUDENT FINANCE</small></div><button className="mobile-close" onClick={()=>setMenu(false)} aria-label="Close navigation"><X size={18}/></button></div>
    <div className="workspace-label">WORKSPACE</div>
    <nav className="sidebar-nav" aria-label="Main navigation">{nav.map(([to,label,Icon])=><NavLink end={to==='/'} to={to} onClick={()=>setMenu(false)} className={({isActive})=>`nav-link ${isActive?'active':''}`} key={to}><Icon size={18}/><span>{label}</span>{label==='AI insights'&&<span className="nav-spark">✦</span>}</NavLink>)}</nav>
    <div className="sidebar-bottom"><NavLink className="profile" to="/settings" aria-label="Open profile settings"><div className="avatar"><Avatar user={user}/></div><div className="profile-info"><b>{user.name}</b><span>Profile settings</span></div><SettingsIcon size={16} className="profile-logout"/></NavLink><button type="button" className="sidebar-logout" onClick={signout}><LogOut size={16}/><span>Sign out</span></button></div>
@@ -60,14 +60,11 @@ function Auth({onLogin,theme,onThemeToggle}){
  }
  return <main className="auth-wrap">
   <section className="auth-panel">
-   <div className="auth-panel-top"><div className="brand auth-brand"><div className="brand-mark"><img className="brand-icon-image" src="/icons/icon-192.png?v=2" alt=""/></div><div>Spend<span>Count</span><small>STUDENT FINANCE</small></div></div></div>
+   <div className="auth-panel-top"><div className="brand auth-brand"><div className="brand-mark"><img className="brand-icon-image" src="/icons/icon-192.png?v=3" alt=""/></div><div>Spend<span>Count</span><small>STUDENT FINANCE</small></div></div></div>
    <div className="auth-copy"><div className="eyebrow">YOUR MONEY, WITH A PLAN</div><h1>Make your money<br/><span>last the month.</span></h1><p>A calmer way to understand your spending, plan ahead, and keep your student life moving.</p></div>
-   <div className="auth-preview" aria-hidden="true"><div className="preview-card"><div className="preview-card-top"><span className="preview-pulse"/> A clearer view of your week <Sparkles size={15}/></div><div className="preview-bars"><i/><i/><i/><i/><i/><i/><i/></div><div className="preview-legend"><span><i className="preview-income"/> Income</span><span><i className="preview-spend"/> Spending</span><span><i className="preview-plan"/> Plan</span></div></div><div className="preview-note"><span><Activity size={15}/></span><div><b>Stay a step ahead</b><small>Small habits, more runway</small></div></div></div>
-   <div className="auth-benefits"><div><span className="benefit-icon"><Activity size={18}/></span><div><b>See your runway</b><small>Know how long your balance may last.</small></div></div><div><span className="benefit-icon"><Sparkles size={18}/></span><div><b>Spot spending patterns</b><small>Understand where your money goes.</small></div></div><div><span className="benefit-icon"><CalendarDays size={18}/></span><div><b>Plan around payday</b><small>Make irregular income easier to manage.</small></div></div></div>
-   <div className="auth-legal">Built for campus life <span>·</span> Your data stays yours</div>
   </section>
   <section className="auth-form-side">
-   <div className="auth-form-top"><span className="auth-mobile-brand"><img src="/icons/icon-192.png?v=2" alt=""/>SpendCount <i>·</i> Student finance</span><ThemeToggle theme={theme} onToggle={onThemeToggle}/></div>
+   <div className="auth-form-top"><span className="auth-mobile-brand"><img src="/icons/icon-192.png?v=3" alt=""/>SpendCount <i>·</i> Student finance</span><ThemeToggle theme={theme} onToggle={onThemeToggle}/></div>
    <form className="auth-form" onSubmit={submit}>
     <span className="form-kicker">{mode==='login'?'WELCOME BACK':'GET STARTED'}</span><h2>{mode==='login'?'Sign in to SpendCount':'Create your account'}</h2><p>{mode==='login'?'Pick up where your money left off.':'Build a clearer picture of your student finances.'}</p>
     {mode==='register'&&<label htmlFor="auth-name">Full name<input id="auth-name" name="name" autoComplete="name" required minLength="2" placeholder="e.g. Aanya Sharma"/></label>}
