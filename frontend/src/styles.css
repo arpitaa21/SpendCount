@@ -88,9 +88,9 @@ body{background:var(--page);color:var(--ink);transition:background-color .18s ea
 
 :root[data-theme="dark"]{
  color-scheme:dark;
- --page:#0c1119;--surface:#141c27;--surface-raised:#1b2735;--ink:#edf2f7;--muted:#a7b4c2;--line:#2b3948;
- --blue:#a5b0ff;--navy:#111b2a;--green:#59d7a7;--amber:#ffc36e;--card:#141c27;
- --accent-violet:#c3a6ff;--accent-cyan:#7bd7e8;--accent-coral:#ff927d;--accent-lime:#b4dc78
+ --page:#03120e;--surface:#0c1c16;--surface-raised:#14261f;--ink:#eef7f2;--muted:#b4c9be;--line:#2b483b;
+ --blue:#7dab9f;--navy:#03120e;--green:#87b9a7;--amber:#d0b083;--card:#0c1c16;
+ --accent-violet:#9cc0af;--accent-cyan:#7dab9f;--accent-coral:#d79581;--accent-lime:#b3ce91
 }
 :root[data-theme="dark"] body,:root[data-theme="dark"] .main,:root[data-theme="dark"] .page-wrap{background:var(--page);color:var(--ink)}
 :root[data-theme="dark"] .sidebar{background:#111925;border-right:1px solid #2c3845}
@@ -311,3 +311,47 @@ body{background:var(--page);color:var(--ink);transition:background-color .18s ea
 :root[data-theme="dark"] .profile-menu-item{color:#edf2f7}
 :root[data-theme="dark"] .profile-menu-item:hover,:root[data-theme="dark"] .profile-menu-item:focus-visible{background:#263548;color:#fff}
 @media(prefers-reduced-motion:reduce){.profile-menu{animation:none}.account-trigger{transition:none}}
+
+/* Dark theme contrast pairing: forest ink with sage highlights. */
+:root[data-theme="dark"] .sidebar{background:#03120e;border-right-color:#2b483b}
+:root[data-theme="dark"] .brand-mark,:root[data-theme="dark"] .support-orb{background:#7dab9f;color:#03120e;box-shadow:0 5px 18px #7dab9f30}
+:root[data-theme="dark"] .brand span,:root[data-theme="dark"] .nav-spark{color:#7dab9f}
+:root[data-theme="dark"] .nav-link.active{background:#7dab9f;color:#03120e;box-shadow:inset 3px 0 #c7e2d5}
+:root[data-theme="dark"] .nav-link.active svg{color:#03120e}
+:root[data-theme="dark"] .nav-link:hover{background:#7dab9f20;color:#f4faf7}
+:root[data-theme="dark"] .support-card{background:#0e2119;border-color:#2b483b}
+:root[data-theme="dark"] .support-card a{color:#a9cfbd}
+:root[data-theme="dark"] .topbar{background:#061710ed;border-color:#2b483b}
+:root[data-theme="dark"] .today-chip,:root[data-theme="dark"] .theme-toggle,:root[data-theme="dark"] .secondary-btn,:root[data-theme="dark"] .icon-button,:root[data-theme="dark"] .icon-link{background:#14261f;border-color:#345447;color:#e5f1eb}
+:root[data-theme="dark"] .primary-btn{background:#7dab9f;color:#03120e;box-shadow:0 5px 16px #7dab9f30}
+:root[data-theme="dark"] .primary-btn:hover{background:#92bcae}
+:root[data-theme="dark"] .card,:root[data-theme="dark"] .metric,:root[data-theme="dark"] .chart-card,:root[data-theme="dark"] .transactions-card,:root[data-theme="dark"] .modal,:root[data-theme="dark"] .auth-form,:root[data-theme="dark"] .account-card,:root[data-theme="dark"] .schedule-card,:root[data-theme="dark"] .budget-form-card,:root[data-theme="dark"] .budgets-card,:root[data-theme="dark"] .recurring-card,:root[data-theme="dark"] .suggestion-card,:root[data-theme="dark"] .anomalies-card{background:#0c1c16;border-color:#2b483b}
+:root[data-theme="dark"] .metric-icon.blue,:root[data-theme="dark"] .empty-illustration{background:#1d3930;color:#a9cfbd}
+:root[data-theme="dark"] .metric-icon.green,:root[data-theme="dark"] .health-mark,:root[data-theme="dark"] .clear-icon{background:#1b382e;color:#94c3af}
+:root[data-theme="dark"] .metric-icon.amber{background:#392f20;color:#e7c48f}
+:root[data-theme="dark"] .metric-icon.purple{background:#26392f;color:#b0cdbb}
+:root[data-theme="dark"] .health-banner{background:#10271d;border-color:#315343}
+:root[data-theme="dark"] .health-copy b{color:#e6f4ec}
+:root[data-theme="dark"] .health-copy span,:root[data-theme="dark"] .health-confidence{color:#b4c9be}
+:root[data-theme="dark"] .health-status,:root[data-theme="dark"] .trend.up,:root[data-theme="dark"] .text-link{color:#9bc9b4}
+:root[data-theme="dark"] .forecast-big,:root[data-theme="dark"] .planner-hero,:root[data-theme="dark"] .auth-panel{background:linear-gradient(145deg,#03120e 0%,#10271d 58%,#1b3b2e 100%)}
+:root[data-theme="dark"] .auth-panel:before{background:radial-gradient(circle,#7dab9f4d 0%,#315e4f22 40%,transparent 72%)}
+:root[data-theme="dark"] .auth-panel:after{background:radial-gradient(circle,#315e4f45 0%,#17382c1a 46%,transparent 72%)}
+:root[data-theme="dark"] .auth-panel .brand-mark{background:#7dab9f;color:#03120e}
+:root[data-theme="dark"] .auth-panel .brand span,:root[data-theme="dark"] .auth-copy .eyebrow,:root[data-theme="dark"] .auth-form .form-kicker,:root[data-theme="dark"] .auth-switch button{color:#9bc9b4}
+:root[data-theme="dark"] .auth-copy h1 span{background:linear-gradient(95deg,#f4faf7 2%,#9bc9b4 82%);-webkit-background-clip:text;background-clip:text;color:transparent}
+:root[data-theme="dark"] .preview-bars i{background:linear-gradient(180deg,#a7ceb9,#7dab9f)}
+:root[data-theme="dark"] .auth-form input{background:#07140f;border-color:#345447;color:#f0f8f3}
+:root[data-theme="dark"] .auth-form input::placeholder{color:#a0b8aa}
+:root[data-theme="dark"] .auth-form .primary-btn{background:linear-gradient(100deg,#7dab9f 0%,#a9cfbd 100%);color:#03120e}
+:root[data-theme="dark"] .auth-form .primary-btn:hover{background:linear-gradient(100deg,#92bcae 0%,#b7dac9 100%)}
+:root[data-theme="dark"] .profile-menu{background:#0c1c16;border-color:#2b483b}
+:root[data-theme="dark"] .profile-menu-item svg{color:#7dab9f}
+:root[data-theme="dark"] .profile-menu-item:hover,:root[data-theme="dark"] .profile-menu-item:focus-visible{background:#7dab9f25;color:#f0f8f3}
+:root[data-theme="dark"] .progress{background:#20382e}
+:root[data-theme="dark"] .progress i{background:#7dab9f}
+:root[data-theme="dark"] .progress i.over{background:#d79581}
+:root[data-theme="dark"] .tag,:root[data-theme="dark"] .count-pill{background:#1b3026;color:#c9dbd0}
+:root[data-theme="dark"] .table-scroll th,:root[data-theme="dark"] .table-scroll td{border-color:#2b483b!important}
+:root[data-theme="dark"] .recharts-cartesian-grid line{stroke:#2b483b!important}
+:root[data-theme="dark"] .recharts-cartesian-axis-tick-value{fill:#b4c9be!important}
