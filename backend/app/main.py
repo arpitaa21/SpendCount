@@ -432,6 +432,44 @@ def import_document_text(data: dict = Body(...), db: Session = Depends(get_db), 
     lines = [" ".join(line.split()) for line in content.splitlines()]
     date_re = re.compile(r"(?<!\d)(\d{4}[-/]\d{1,2}[-/]\d{1,2}|\d{1,2}[-/]\d{1,2}(?:[-/]\d{2,4})?|\d{1,2}[-\s]+[A-Za-z]{3,9}(?:[-\s]+\d{2,4})?)(?!\d)", re.I)
     card_re = re.compile(r"\b(?:payment\s+to\s+(?:you|[A-Za-z][A-Za-z0-9 .'-]{1,50})|payment\s+from\s+[A-Za-z][A-Za-z0-9 .'-]{1,50}|payment\s+received|money\s+received|received\s+from\s+[A-Za-z][A-Za-z0-9 .'-]{1,50}|sent\s+to\s+[A-Za-z][A-Za-z0-9 .'-]{1,50})\b", re.I)
+    # Tesseract's sparse-text mode detects amounts and dates on these UPI cards,
+    # but its plain text mode can reorder those lines away from their headings.
+    paid_lines = [i for i, line in enumerate(lines) if re.search(r"\bpaid\b", line, re.I)]
+    has_payment_heading = any(re.search(r"\bpayment\s+(?:to|from)\b|\b(?:money\s+received|payment\s+received)\b", line, re.I) for line in lines)
+    if len(paid_lines) >= 2 and has_payment_heading:
+        boundaries = [-1, *paid_lines]
+        amount_re = re.compile(r"(?:₹|rs\.?|inr|\br)\s*([0-9][0-9,]*(?:\.[0-9]{1,2})?)", re.I)
+        for boundary_index in range(1, len(boundaries)):
+            start, end = boundaries[boundary_index - 1] + 1, boundaries[boundary_index]
+            block = lines[start:end + 1]
+            handled_lines.update(range(start, end + 1))
+            joined = " ".join(block)
+            amount_match = next((match for line in block if (match := amount_re.search(line))), None)
+            amount = float(amount_match.group(1).replace(",", "")) if amount_match else None
+            date_match = next((match for line in block if (match := date_re.search(line))), None)
+            parsed_date = parse_document_date(date_match.group(1)) if date_match else None
+            heading = next((line.strip() for line in block if re.search(r"\bpayment\s+(?:to|from)\b|\b(?:money\s+received|payment\s+received)\b", line, re.I)), "")
+            if re.fullmatch(r"payment\s+to", heading, re.I):
+                heading_index = block.index(heading)
+                recipient = next((line.strip() for line in block[heading_index + 1:] if re.fullmatch(r"[A-Za-z][A-Za-z0-9 .'-]{1,50}", line.strip())), "")
+                if recipient:
+                    heading = f"{heading} {recipient}"
+            heading_lower = heading.casefold()
+            typ = "income" if ("to you" in heading_lower or "received" in heading_lower or "payment from" in heading_lower) else "expense"
+            if "to you" in heading_lower or "received" in heading_lower or "payment from" in heading_lower:
+                description = "Payment received"
+            elif heading:
+                description = heading[:250]
+            else:
+                description = "Imported payment (review details)"
+            review_reason = "Some details could not be read. Fill in the date and amount before importing." if amount is None or amount <= 0 or parsed_date is None else None
+            occurrence_key = (parsed_date.isoformat() if parsed_date else "", description.casefold(), round(amount or 0, 2), typ)
+            card_occurrences[occurrence_key] = card_occurrences.get(occurrence_key, 0) + 1
+            if card_occurrences[occurrence_key] > 1:
+                description = f"{description[:230]} ({card_occurrences[occurrence_key]})"
+            accepted.append({"date": parsed_date.isoformat() if parsed_date else "", "description": description, "amount": amount or "", "transaction_type": typ, "category": "", "payment_method": "UPI", "notes": None, "source": "document", "review_reason": review_reason})
+        if accepted:
+            return {"preview": True, "accepted_count": len(accepted), "rejected_count": len(rejected), "accepted": accepted, "rejected": rejected, "message": "Review each payment and fill any unreadable fields before importing."}
     anchors = [i for i, line in enumerate(lines) if card_re.search(line)]
     for position, start in enumerate(anchors):
         end = anchors[position + 1] if position + 1 < len(anchors) else min(len(lines), start + 12)
@@ -565,7 +603,9 @@ def get_expense_diary(month: str = Query(..., pattern=r"^\d{4}-\d{2}$"), db: Ses
     except ValueError:
         raise HTTPException(422, "Month must be in YYYY-MM format")
     last = date(year, month_number, monthrange(year, month_number)[1])
-    entries = tx_query(db, user.id).filter(Transaction.transaction_type == "expense", Transaction.source == "expense_diary", Transaction.date >= first, Transaction.date <= last).order_by(Transaction.date.desc(), Transaction.id.desc()).all()
+    # The diary is the readable daily view of every saved expense, regardless of
+    # whether it came from a manual entry, statement import, or diary quick-add.
+    entries = tx_query(db, user.id).filter(Transaction.transaction_type == "expense", Transaction.date >= first, Transaction.date <= last).order_by(Transaction.date.desc(), Transaction.id.desc()).all()
     daily_totals = {}
     for item in entries:
         day = item.date.isoformat()
