@@ -610,7 +610,14 @@ def get_expense_diary(month: str = Query(..., pattern=r"^\d{4}-\d{2}$"), db: Ses
     for item in entries:
         day = item.date.isoformat()
         daily_totals[day] = daily_totals.get(day, 0) + float(item.amount)
-    return {"month": month, "monthly_total": round(sum(float(item.amount) for item in entries), 2), "entry_count": len(entries), "daily_totals": daily_totals, "entries": entries}
+    weekly_totals = []
+    week_start = first
+    while week_start <= last:
+        week_end = min(last, week_start + timedelta(days=6 - week_start.weekday()))
+        week_amount = sum(value for day, value in daily_totals.items() if week_start.isoformat() <= day <= week_end.isoformat())
+        weekly_totals.append({"start_date": week_start.isoformat(), "end_date": week_end.isoformat(), "amount": round(week_amount, 2)})
+        week_start = week_end + timedelta(days=1)
+    return {"month": month, "monthly_total": round(sum(float(item.amount) for item in entries), 2), "entry_count": len(entries), "daily_totals": daily_totals, "weekly_totals": weekly_totals, "entries": entries}
 
 @app.get("/api/transactions/template")
 def csv_template():

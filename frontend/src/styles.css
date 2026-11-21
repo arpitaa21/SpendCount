@@ -599,7 +599,8 @@ input:focus,select:focus,textarea:focus{border-color:var(--theme-accent)!importa
 
 /* Expense diary and transaction image review layouts */
 .diary-layout{display:grid;grid-template-columns:minmax(0,.9fr) minmax(0,1.1fr);gap:16px;align-items:start}
-.diary-entry-card,.diary-month-card{padding:20px}
+.diary-entry-card,.diary-daily-card,.diary-month-card{padding:20px}
+.diary-month-card{grid-column:1/-1}
 .diary-entry-card form{display:grid;gap:12px;margin-top:16px}
 .diary-entry-card form>label,.diary-month-select{display:grid;gap:7px;color:var(--muted);font-size:11px;font-weight:650}
 .diary-entry-card textarea{width:100%;resize:vertical;min-height:112px;border:1px solid var(--line);border-radius:9px;padding:11px;background:var(--field-bg);color:var(--ink);font:inherit;font-size:12px;line-height:1.6}
@@ -620,6 +621,17 @@ input:focus,select:focus,textarea:focus{border-color:var(--theme-accent)!importa
 .diary-day-head{padding-bottom:8px;border-bottom:1px solid var(--line)}
 .diary-transaction{padding-top:9px}
 .diary-transaction span{display:grid;gap:3px}.diary-transaction small{color:var(--muted);font-size:9px}
+.diary-daily-line{margin:9px 0 0;color:var(--ink);font-size:11px;line-height:1.65;overflow-wrap:anywhere}
+.diary-weekly-list{display:grid;gap:12px;margin-top:17px}
+.diary-week{display:grid;gap:7px}
+.diary-week>div:first-child{display:flex;justify-content:space-between;align-items:center;gap:10px;color:var(--ink);font-size:11px}
+.diary-week>div:first-child span{display:flex;gap:8px;align-items:baseline;font-weight:700}
+.diary-week small{color:var(--muted);font-size:9px;font-weight:500}
+.diary-week>div:first-child b{font-size:11px}
+.diary-week-track{height:7px;border-radius:99px;background:color-mix(in srgb,var(--theme-accent) 14%,var(--surface));overflow:hidden}
+.diary-week-track i{display:block;height:100%;border-radius:inherit;background:var(--theme-accent);min-width:0}
+.diary-month-equation{display:flex;justify-content:space-between;gap:10px;align-items:center;border-top:1px solid var(--line);padding-top:13px;margin-top:3px;color:var(--muted);font-size:10px}
+.diary-month-equation b{color:var(--ink);font-size:11px}
 .document-review{display:grid;gap:10px;margin-top:14px}
 .document-review-row{padding:13px;border:1px solid var(--line);border-radius:10px;background:var(--surface)}
 .document-review-fields{display:grid;grid-template-columns:repeat(4,minmax(115px,1fr));gap:10px}
@@ -627,6 +639,6 @@ input:focus,select:focus,textarea:focus{border-color:var(--theme-accent)!importa
 .document-review-fields input,.document-review-fields select{height:34px;min-width:0;border:1px solid var(--line);border-radius:7px;padding:0 8px;background:var(--field-bg);color:var(--ink);font:inherit;font-size:10px}
 .document-review-fields .review-description{grid-column:span 2}.document-review-fields .review-note{grid-column:span 2}
 .document-review-fields input:focus,.document-review-fields select:focus{outline:none;border-color:var(--theme-accent);box-shadow:0 0 0 2px color-mix(in srgb,var(--theme-accent) 18%,transparent)}
-@media(max-width:900px){.diary-layout{grid-template-columns:1fr}.document-review-fields{grid-template-columns:repeat(2,minmax(0,1fr))}}
-@media(max-width:620px){.diary-entry-card,.diary-month-card{padding:14px}.document-review-fields{grid-template-columns:1fr 1fr;gap:8px}.document-review-fields label{font-size:8px}.document-review-fields input,.document-review-fields select{font-size:9px}.document-review-fields .review-description,.document-review-fields .review-note{grid-column:1/-1}}
+@media(max-width:900px){.diary-layout{grid-template-columns:1fr}.diary-month-card{grid-column:auto}.document-review-fields{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:620px){.diary-entry-card,.diary-daily-card,.diary-month-card{padding:14px}.diary-month-equation{align-items:flex-start;flex-direction:column}.document-review-fields{grid-template-columns:1fr 1fr;gap:8px}.document-review-fields label{font-size:8px}.document-review-fields input,.document-review-fields select{font-size:9px}.document-review-fields .review-description,.document-review-fields .review-note{grid-column:1/-1}}
 .review-hint{display:block;margin-top:8px;color:var(--theme-accent);font-size:10px;font-weight:650}
