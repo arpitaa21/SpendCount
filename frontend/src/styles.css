@@ -596,3 +596,36 @@ input:focus,select:focus,textarea:focus{border-color:var(--theme-accent)!importa
 :root[data-theme="dark"] .auth-panel:after{background:radial-gradient(circle,#7dab9f12 0%,transparent 72%)!important}
 :root[data-theme="dark"] .auth-panel .brand span,:root[data-theme="dark"] .auth-copy .eyebrow{color:#a9cfbd!important}
 :root[data-theme="dark"] .auth-copy h1 span{background:none!important;color:#a9cfbd!important;-webkit-text-fill-color:#a9cfbd}
+
+/* Expense diary and transaction image review layouts */
+.diary-layout{display:grid;grid-template-columns:minmax(0,.9fr) minmax(0,1.1fr);gap:16px;align-items:start}
+.diary-entry-card,.diary-month-card{padding:20px}
+.diary-entry-card form{display:grid;gap:12px;margin-top:16px}
+.diary-entry-card form>label,.diary-month-select{display:grid;gap:7px;color:var(--muted);font-size:11px;font-weight:650}
+.diary-entry-card textarea{width:100%;resize:vertical;min-height:112px;border:1px solid var(--line);border-radius:9px;padding:11px;background:var(--field-bg);color:var(--ink);font:inherit;font-size:12px;line-height:1.6}
+.diary-entry-card textarea:focus{outline:none;border-color:var(--theme-accent);box-shadow:0 0 0 3px color-mix(in srgb,var(--theme-accent) 22%,transparent)}
+.diary-help{color:var(--muted);font-size:10px;line-height:1.5}
+.diary-preview{display:grid;gap:5px;padding:12px;border:1px solid var(--line);border-radius:10px;background:color-mix(in srgb,var(--surface) 78%,var(--theme-accent))}
+.diary-preview>b{color:var(--ink);font-size:10px;margin-bottom:3px}
+.diary-preview>div,.diary-day-head,.diary-transaction{display:flex;justify-content:space-between;align-items:center;gap:12px}
+.diary-preview>div span,.diary-day-head b,.diary-transaction span{color:var(--ink);font-size:11px}
+.diary-preview>div strong,.diary-day-head strong,.diary-transaction>b{color:var(--theme-accent);font-size:11px}
+.diary-preview>div.diary-invalid span,.diary-preview>div.diary-invalid strong{color:#c6533e}
+.diary-month-select{margin:16px 0 13px}
+.diary-month-select input{height:38px;border:1px solid var(--line);border-radius:8px;padding:0 10px;background:var(--field-bg);color:var(--ink)}
+.diary-total{font:750 31px Manrope,sans-serif;color:var(--theme-accent);letter-spacing:-1px;margin-top:10px}
+.diary-entry-count{display:block;color:var(--muted);font-size:10px;margin-top:2px}
+.diary-days{display:grid;gap:10px;margin-top:17px;max-height:520px;overflow:auto}
+.diary-day{padding:12px;border:1px solid var(--line);border-radius:10px;background:var(--surface)}
+.diary-day-head{padding-bottom:8px;border-bottom:1px solid var(--line)}
+.diary-transaction{padding-top:9px}
+.diary-transaction span{display:grid;gap:3px}.diary-transaction small{color:var(--muted);font-size:9px}
+.document-review{display:grid;gap:10px;margin-top:14px}
+.document-review-row{padding:13px;border:1px solid var(--line);border-radius:10px;background:var(--surface)}
+.document-review-fields{display:grid;grid-template-columns:repeat(4,minmax(115px,1fr));gap:10px}
+.document-review-fields label{display:grid;gap:5px;color:var(--muted);font-size:9px;font-weight:650}
+.document-review-fields input,.document-review-fields select{height:34px;min-width:0;border:1px solid var(--line);border-radius:7px;padding:0 8px;background:var(--field-bg);color:var(--ink);font:inherit;font-size:10px}
+.document-review-fields .review-description{grid-column:span 2}.document-review-fields .review-note{grid-column:span 2}
+.document-review-fields input:focus,.document-review-fields select:focus{outline:none;border-color:var(--theme-accent);box-shadow:0 0 0 2px color-mix(in srgb,var(--theme-accent) 18%,transparent)}
+@media(max-width:900px){.diary-layout{grid-template-columns:1fr}.document-review-fields{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:620px){.diary-entry-card,.diary-month-card{padding:14px}.document-review-fields{grid-template-columns:1fr 1fr;gap:8px}.document-review-fields label{font-size:8px}.document-review-fields input,.document-review-fields select{font-size:9px}.document-review-fields .review-description,.document-review-fields .review-note{grid-column:1/-1}}

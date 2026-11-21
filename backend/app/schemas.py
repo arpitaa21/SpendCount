@@ -37,8 +37,19 @@ class TransactionOut(TransactionIn):
     model_config = ConfigDict(from_attributes=True)
 
 class BudgetIn(BaseModel):
-    category: str
+    category: str = Field(min_length=1, max_length=40)
     monthly_limit: float = Field(gt=0, le=100000000)
+
+class DocumentImportIn(BaseModel):
+    transactions: list[TransactionIn] = Field(min_length=1, max_length=500)
+
+class ExpenseDiaryEntryIn(BaseModel):
+    description: str = Field(min_length=1, max_length=250)
+    amount: float = Field(gt=0, le=100000000)
+
+class ExpenseDiaryIn(BaseModel):
+    date: date
+    entries: list[ExpenseDiaryEntryIn] = Field(min_length=1, max_length=50)
 
 class ScheduleIn(BaseModel):
     income_source: str

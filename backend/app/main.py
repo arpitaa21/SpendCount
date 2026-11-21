@@ -20,6 +20,8 @@ from .schemas import (
     TransactionIn,
     TransactionOut,
     BudgetIn,
+    DocumentImportIn,
+    ExpenseDiaryIn,
     ScheduleIn,
     CommitmentIn,
     PlanningSettingsIn,
@@ -72,6 +74,19 @@ def predict_user_category(db, user_id, description):
     feedback = db.query(CategoryCorrection).filter(CategoryCorrection.user_id == user_id).order_by(CategoryCorrection.created_at.desc()).limit(500).all()
     examples = tuple((row.description, row.corrected_category) for row in feedback)
     return predict_category(description, examples)
+
+def expense_categories_for_user(db, user_id):
+    budget_categories = db.query(Budget.category).filter(Budget.user_id == user_id).distinct().all()
+    transaction_categories = db.query(Transaction.category).filter(Transaction.user_id == user_id, Transaction.transaction_type == "expense").distinct().all()
+    custom = {name for (name,) in budget_categories + transaction_categories if name and name not in EXPENSE_CATEGORIES}
+    return [*EXPENSE_CATEGORIES, *sorted(custom, key=str.casefold)]
+
+def valid_transaction_category(db, user_id, transaction_type, category):
+    if category == "Needs Review":
+        return True
+    if transaction_type == "income":
+        return category in INCOME_CATEGORIES
+    return category in expense_categories_for_user(db, user_id)
 
 def month_bounds(d=None):
     if d is None:
@@ -268,13 +283,12 @@ def create_transaction(data: TransactionIn, db: Session = Depends(get_db), user:
     typ = data.transaction_type.lower()
     if typ not in ("income", "expense"):
         raise HTTPException(422, "Transaction type must be income or expense")
-    allowed = INCOME_CATEGORIES if typ == "income" else EXPENSE_CATEGORIES
     category = data.category
     suggestion = None
     if category in ("", "Needs Review", "Auto"):
         suggestion = predict_income_category(data.description) if typ == "income" else predict_user_category(db, user.id, data.description)
         category = suggestion["category"]
-    if category not in allowed and category != "Needs Review":
+    if not valid_transaction_category(db, user.id, typ, category):
         raise HTTPException(422, "Category does not match transaction type")
     tx = Transaction(user_id=user.id, date=data.date, description=data.description.strip(), amount=data.amount, transaction_type=typ, category=category, payment_method=data.payment_method, notes=data.notes, source=data.source)
     db.add(tx)
@@ -296,8 +310,7 @@ def update_transaction(tx_id: int, data: TransactionIn, db: Session = Depends(ge
     typ = values["transaction_type"].lower()
     if typ not in ("income", "expense"):
         raise HTTPException(422, "Transaction type must be income or expense")
-    allowed = INCOME_CATEGORIES if typ == "income" else EXPENSE_CATEGORIES
-    if values["category"] not in allowed and values["category"] != "Needs Review":
+    if not valid_transaction_category(db, user.id, typ, values["category"]):
         raise HTTPException(422, "Category does not match transaction type")
     previous_category = tx.category
     values["transaction_type"] = typ
@@ -369,8 +382,7 @@ def parse_csv_content(content: str, preview: bool, db: Session, user: User):
             if not cat:
                 pred = predict_income_category(desc) if typ == "income" else predict_user_category(db, user.id, desc)
                 cat = pred["category"]
-            allowed = INCOME_CATEGORIES if typ == "income" else EXPENSE_CATEGORIES
-            if cat not in allowed and cat != "Needs Review":
+            if not valid_transaction_category(db, user.id, typ, cat):
                 raise ValueError(f"unknown {typ} category: {cat}")
             key = (dt.isoformat(), desc.casefold(), round(amt, 2), typ)
             if key in existing or key in seen:
@@ -394,6 +406,19 @@ def parse_csv_content(content: str, preview: bool, db: Session, user: User):
         "message": "Review the preview, then upload again with preview=false to import valid rows." if preview else f"Imported {len(accepted)} rows; {len(rejected)} rows need attention.",
     }
 
+def parse_document_date(value):
+    value = re.sub(r"[,·•]", " ", value).strip()
+    formats = ("%d %b %Y", "%d %B %Y", "%d %b", "%d %B", "%Y-%m-%d", "%d/%m/%Y", "%d-%m-%Y", "%d/%m", "%d-%m")
+    for fmt in formats:
+        try:
+            parsed = datetime.strptime(value, fmt).date()
+            if "%Y" not in fmt:
+                parsed = parsed.replace(year=date.today().year)
+            return parsed
+        except ValueError:
+            pass
+    return None
+
 @app.post("/api/transactions/import-document-text")
 def import_document_text(data: dict = Body(...), db: Session = Depends(get_db), user: User = Depends(current_user)):
     content = data.get("text", "")
@@ -403,33 +428,56 @@ def import_document_text(data: dict = Body(...), db: Session = Depends(get_db), 
     if len(content) > 1_000_000:
         raise HTTPException(413, "Extracted document text is too large")
     existing = {(t.date.isoformat(), t.description.casefold(), round(t.amount, 2), t.transaction_type) for t in tx_query(db, user.id).all()}
-    accepted, rejected, seen = [], [], set()
-    date_re = re.compile(r"(?<!\d)(\d{4}[-/]\d{1,2}[-/]\d{1,2}|\d{1,2}[-/]\d{1,2}[-/]\d{2,4}|\d{1,2}[-\s]+[A-Za-z]{3,9}[-\s]+\d{4})(?!\d)")
-    money_re = re.compile(r"(?<![A-Za-z0-9/#:])[-+]?\s*(?:₹|INR\s*)?\d[\d,]*(?:\.\d{1,2})?(?![A-Za-z0-9/#:])", re.I)
+    accepted, rejected, seen, handled_lines, card_occurrences = [], [], set(), set(), {}
+    lines = [" ".join(line.split()) for line in content.splitlines()]
+    date_re = re.compile(r"(?<!\d)(\d{4}[-/]\d{1,2}[-/]\d{1,2}|\d{1,2}[-/]\d{1,2}(?:[-/]\d{2,4})?|\d{1,2}[-\s]+[A-Za-z]{3,9}(?:[-\s]+\d{2,4})?)(?!\d)", re.I)
+    card_re = re.compile(r"\b(?:payment\s+to\s+(?:you|[A-Za-z][A-Za-z0-9 .'-]{1,50})|payment\s+from\s+[A-Za-z][A-Za-z0-9 .'-]{1,50}|payment\s+received|money\s+received|received\s+from\s+[A-Za-z][A-Za-z0-9 .'-]{1,50}|sent\s+to\s+[A-Za-z][A-Za-z0-9 .'-]{1,50})\b", re.I)
+    anchors = [i for i, line in enumerate(lines) if card_re.search(line)]
+    for position, start in enumerate(anchors):
+        end = anchors[position + 1] if position + 1 < len(anchors) else min(len(lines), start + 12)
+        block = lines[start:end]
+        handled_lines.update(range(start, end))
+        title = block[0]
+        heading = card_re.search(title).group(0)
+        heading_lower = heading.casefold()
+        typ = "income" if ("to you" in heading_lower or "received" in heading_lower or "payment from" in heading_lower) else "expense"
+        amount = None
+        for item in block:
+            amount_match = re.search(r"(?:₹|rs\.?|inr)\s*([0-9][0-9,]*(?:\.[0-9]{1,2})?)", item, re.I)
+            if amount_match:
+                amount = float(amount_match.group(1).replace(",", ""))
+                break
+        date_match = next((date_re.search(item) for item in block if date_re.search(item)), None)
+        parsed_date = parse_document_date(date_match.group(1)) if date_match else None
+        if amount is None or amount <= 0 or parsed_date is None:
+            rejected.append({"row": start + 1, "reason": "Could not confidently read both amount and date from this payment card. Check the screenshot and enter it manually if needed.", "data": {"text": " ".join(block)[:250]}})
+            continue
+        if "to you" in heading_lower or "received" in heading_lower or "payment from" in heading_lower:
+            description = "Payment received"
+        else:
+            description = heading[:250]
+        occurrence_key = (parsed_date.isoformat(), description.casefold(), round(amount, 2), typ)
+        card_occurrences[occurrence_key] = card_occurrences.get(occurrence_key, 0) + 1
+        if card_occurrences[occurrence_key] > 1:
+            description = f"{description[:230]} ({card_occurrences[occurrence_key]})"
+        key = (parsed_date.isoformat(), description.casefold(), round(amount, 2), typ)
+        if key in existing or key in seen:
+            rejected.append({"row": start + 1, "reason": "Possible duplicate transaction", "data": {"text": " ".join(block)[:250]}})
+            continue
+        seen.add(key)
+        accepted.append({"date": parsed_date.isoformat(), "description": description, "amount": amount, "transaction_type": typ, "category": "", "payment_method": "UPI", "notes": None, "source": "document"})
+
     credit_words = re.compile(r"\b(cr|credit|credited|deposit|deposited|salary|scholarship|allowance|refund|received)\b", re.I)
     debit_words = re.compile(r"\b(dr|debit|debited|withdrawal|withdrawn|purchase|paid|payment|spent)\b", re.I)
-    for line_no, raw_line in enumerate(content.splitlines(), 1):
-        line = " ".join(raw_line.split())
-        if not line:
+    money_re = re.compile(r"(?<![A-Za-z0-9/#:])[-+]?\s*(?:₹|INR\s*)?\d[\d,]*(?:\.\d{1,2})?(?![A-Za-z0-9/#:])", re.I)
+    for line_no, line in enumerate(lines, 1):
+        if line_no - 1 in handled_lines or not line:
             continue
         dm = date_re.search(line)
         if not dm:
             continue
-        date_text = dm.group(1)
-        try:
-            if re.match(r"^\d{4}", date_text):
-                parsed_date = date.fromisoformat(date_text.replace("/", "-"))
-            elif re.match(r"^\d{1,2}[-\s]+[A-Za-z]", date_text):
-                try:
-                    parsed_date = datetime.strptime(date_text, "%d %b %Y" if " " in date_text else "%d-%b-%Y").date()
-                except ValueError:
-                    parsed_date = datetime.strptime(date_text, "%d %B %Y" if " " in date_text else "%d-%B-%Y").date()
-            else:
-                day, month, year = map(int, re.split(r"[-/]", date_text))
-                if year < 100:
-                    year += 2000 if year < 70 else 1900
-                parsed_date = date(year, month, day)
-        except ValueError:
+        parsed_date = parse_document_date(dm.group(1))
+        if not parsed_date:
             rejected.append({"row": line_no, "reason": "Could not read this transaction date", "data": {"text": line[:250]}})
             continue
         remainder = line[:dm.start()] + " " + line[dm.end():]
@@ -446,7 +494,6 @@ def import_document_text(data: dict = Body(...), db: Session = Depends(get_db), 
         if not parsed_values:
             rejected.append({"row": line_no, "reason": "No transaction amount could be read", "data": {"text": line[:250]}})
             continue
-        # In common bank exports, a transaction amount is followed by a running balance.
         amount = parsed_values[0]
         typ = "income" if credit_words.search(remainder) else "expense"
         if debit_words.search(remainder) or re.search(r"-\s*(?:₹|INR\s*)?\d", remainder):
@@ -466,15 +513,64 @@ def import_document_text(data: dict = Body(...), db: Session = Depends(get_db), 
             rejected.append({"row": line_no, "reason": "Duplicate transaction", "data": {"text": line[:250]}})
             continue
         seen.add(key)
-        accepted.append({"date": parsed_date.isoformat(), "description": desc, "amount": amount, "transaction_type": typ, "category": category, "source": "document"})
+        accepted.append({"date": parsed_date.isoformat(), "description": desc, "amount": amount, "transaction_type": typ, "category": category, "payment_method": None, "notes": None, "source": "document"})
     if not accepted and not rejected:
         raise HTTPException(422, "No transaction rows with readable dates were found in this document.")
-    if not preview:
-        for item in accepted:
-            item["date"] = date.fromisoformat(item["date"])
-            db.add(Transaction(user_id=user.id, **item))
-        db.commit()
-    return {"preview": preview, "accepted_count": len(accepted), "rejected_count": len(rejected), "accepted": accepted, "rejected": rejected, "message": "Review the extracted rows before importing. Amounts are estimated from document text." if preview else f"Imported {len(accepted)} rows; {len(rejected)} rows need attention."}
+    return {"preview": True, "accepted_count": len(accepted), "rejected_count": len(rejected), "accepted": accepted, "rejected": rejected, "message": "Confirm each date, amount, transaction type, description, and category before importing."}
+
+@app.post("/api/transactions/import-reviewed")
+def import_reviewed_transactions(data: DocumentImportIn, db: Session = Depends(get_db), user: User = Depends(current_user)):
+    existing = {(t.date.isoformat(), t.description.casefold(), round(t.amount, 2), t.transaction_type) for t in tx_query(db, user.id).all()}
+    accepted, rejected = [], []
+    for row_no, item in enumerate(data.transactions, 1):
+        category = item.category.strip()
+        description = item.description.strip()
+        key = (item.date.isoformat(), description.casefold(), round(item.amount, 2), item.transaction_type)
+        if not description or category in ("", "Needs Review") or not valid_transaction_category(db, user.id, item.transaction_type, category):
+            rejected.append({"row": row_no, "reason": "Choose a valid category and description for this transaction."})
+        elif key in existing:
+            rejected.append({"row": row_no, "reason": "Duplicate transaction."})
+        else:
+            existing.add(key)
+            accepted.append(Transaction(user_id=user.id, date=item.date, description=description, amount=item.amount, transaction_type=item.transaction_type, category=category, payment_method=item.payment_method, notes=item.notes, source="document"))
+    db.add_all(accepted)
+    db.commit()
+    return {"accepted_count": len(accepted), "rejected_count": len(rejected), "rejected": rejected, "message": f"Imported {len(accepted)} transactions; {len(rejected)} rows need attention." if rejected else f"Imported {len(accepted)} transactions."}
+
+@app.post("/api/expense-diary")
+def add_expense_diary_entries(data: ExpenseDiaryIn, db: Session = Depends(get_db), user: User = Depends(current_user)):
+    existing = {(t.date.isoformat(), t.description.casefold(), round(t.amount, 2), t.transaction_type) for t in tx_query(db, user.id).all()}
+    accepted, rejected = [], []
+    for row_no, item in enumerate(data.entries, 1):
+        description = item.description.strip()
+        key = (data.date.isoformat(), description.casefold(), round(item.amount, 2), "expense")
+        if key in existing:
+            rejected.append({"row": row_no, "description": description, "reason": "This diary entry already exists for that day."})
+            continue
+        predicted = predict_user_category(db, user.id, description)
+        category = predicted.get("category", "Other") if isinstance(predicted, dict) else predicted
+        if category not in EXPENSE_CATEGORIES:
+            category = "Other"
+        accepted.append(Transaction(user_id=user.id, date=data.date, description=description, amount=item.amount, transaction_type="expense", category=category, source="expense_diary", notes="Added from expense diary"))
+        existing.add(key)
+    db.add_all(accepted)
+    db.commit()
+    return {"accepted_count": len(accepted), "rejected_count": len(rejected), "rejected": rejected, "message": f"Added {len(accepted)} expenses; {len(rejected)} duplicates skipped." if rejected else f"Added {len(accepted)} expenses."}
+
+@app.get("/api/expense-diary")
+def get_expense_diary(month: str = Query(..., pattern=r"^\d{4}-\d{2}$"), db: Session = Depends(get_db), user: User = Depends(current_user)):
+    try:
+        year, month_number = map(int, month.split("-"))
+        first = date(year, month_number, 1)
+    except ValueError:
+        raise HTTPException(422, "Month must be in YYYY-MM format")
+    last = date(year, month_number, monthrange(year, month_number)[1])
+    entries = tx_query(db, user.id).filter(Transaction.transaction_type == "expense", Transaction.source == "expense_diary", Transaction.date >= first, Transaction.date <= last).order_by(Transaction.date.desc(), Transaction.id.desc()).all()
+    daily_totals = {}
+    for item in entries:
+        day = item.date.isoformat()
+        daily_totals[day] = daily_totals.get(day, 0) + float(item.amount)
+    return {"month": month, "monthly_total": round(sum(float(item.amount) for item in entries), 2), "entry_count": len(entries), "daily_totals": daily_totals, "entries": entries}
 
 @app.get("/api/transactions/template")
 def csv_template():
@@ -546,13 +642,14 @@ def budget_usage(db: Session = Depends(get_db), user: User = Depends(current_use
 
 @app.post("/api/budgets", status_code=201)
 def create_budget(data: BudgetIn, db: Session = Depends(get_db), user: User = Depends(current_user)):
-    if data.category not in EXPENSE_CATEGORIES:
-        raise HTTPException(422, "Choose a valid expense category")
-    item = db.query(Budget).filter(Budget.user_id == user.id, Budget.category == data.category).first()
+    category = data.category.strip()
+    if not category:
+        raise HTTPException(422, "Enter a category name")
+    item = db.query(Budget).filter(Budget.user_id == user.id, Budget.category == category).first()
     if item:
         item.monthly_limit = data.monthly_limit
     else:
-        item = Budget(user_id=user.id, **data.model_dump())
+        item = Budget(user_id=user.id, category=category, monthly_limit=data.monthly_limit)
         db.add(item)
     db.commit()
     db.refresh(item)
@@ -563,7 +660,10 @@ def update_budget(budget_id: int, data: BudgetIn, db: Session = Depends(get_db),
     item = db.query(Budget).filter(Budget.id == budget_id, Budget.user_id == user.id).first()
     if not item:
         raise HTTPException(404, "Budget not found")
-    item.category = data.category
+    category = data.category.strip()
+    if not category:
+        raise HTTPException(422, "Enter a category name")
+    item.category = category
     item.monthly_limit = data.monthly_limit
     db.commit()
     db.refresh(item)
@@ -893,5 +993,5 @@ def model_evaluation(db: Session = Depends(get_db), user: User = Depends(current
     return res
 
 @app.get("/api/meta/categories")
-def categories():
-    return {"expense": EXPENSE_CATEGORIES, "income": INCOME_CATEGORIES}
+def categories(db: Session = Depends(get_db), user: User = Depends(current_user)):
+    return {"expense": expense_categories_for_user(db, user.id), "income": INCOME_CATEGORIES}
