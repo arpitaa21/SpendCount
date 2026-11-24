@@ -50,10 +50,26 @@ function Avatar({user}){return user?.avatar_data_url?<img className="avatar-imag
 async function extractDocumentText(file,onProgress){
  if(file.type==='application/pdf'||file.name.toLowerCase().endsWith('.pdf')){
   const pdfjsLib=await import('pdfjs-dist');pdfjsLib.GlobalWorkerOptions.workerSrc=new URL('pdfjs-dist/build/pdf.worker.min.mjs',import.meta.url).toString();const pdf=await pdfjsLib.getDocument({data:await file.arrayBuffer()}).promise;if(pdf.numPages>12)throw new Error('For now, upload a PDF with 12 pages or fewer.');const pages=[];let worker;
-  for(let n=1;n<=pdf.numPages;n++){onProgress?.(`Reading PDF page ${n} of ${pdf.numPages}…`);const page=await pdf.getPage(n),items=await page.getTextContent(),lineGroups=new Map();for(const item of items.items){if(!item.str?.trim())continue;const y=Math.round(item.transform?.[5]||0);lineGroups.set(y,[...(lineGroups.get(y)||[]),item.str])}const native=[...lineGroups.entries()].sort((a,b)=>b[0]-a[0]).map(([,line])=>line.join(' ')).join('\n');if(native.trim().length>35){pages.push(native);continue}if(!worker){const {createWorker}=await import('tesseract.js');worker=await createWorker('eng')}await worker.setParameters({tessedit_pageseg_mode:'11'});const viewport=page.getViewport({scale:1.6}),canvas=document.createElement('canvas');canvas.width=Math.ceil(viewport.width);canvas.height=Math.ceil(viewport.height);await page.render({canvasContext:canvas.getContext('2d'),viewport}).promise;const result=await worker.recognize(canvas,{}, {text:true,blocks:true});pages.push(spatialOcrText(result.data));canvas.width=0;canvas.height=0}
+  for(let n=1;n<=pdf.numPages;n++){onProgress?.(`Reading PDF page ${n} of ${pdf.numPages}…`);const page=await pdf.getPage(n),items=await page.getTextContent(),lineGroups=new Map();for(const item of items.items){if(!item.str?.trim())continue;const y=Math.round(item.transform?.[5]||0);lineGroups.set(y,[...(lineGroups.get(y)||[]),item.str])}const native=[...lineGroups.entries()].sort((a,b)=>b[0]-a[0]).map(([,line])=>line.join(' ')).join('\n');if(native.trim().length>35){pages.push(native);continue}if(!worker){const {createWorker}=await import('tesseract.js');worker=await createWorker('eng')}const viewport=page.getViewport({scale:2.4}),canvas=document.createElement('canvas');canvas.width=Math.ceil(viewport.width);canvas.height=Math.ceil(viewport.height);await page.render({canvasContext:canvas.getContext('2d'),viewport}).promise;const result=await recognizeDocumentCanvas(worker,canvas);pages.push(spatialOcrText(result));canvas.width=0;canvas.height=0}
   if(worker)await worker.terminate();return pages.join('\n')
  }
- onProgress?.('Reading image text on this device…');const {createWorker}=await import('tesseract.js'),worker=await createWorker('eng');try{await worker.setParameters({tessedit_pageseg_mode:'11'});const result=await worker.recognize(file,{}, {text:true,blocks:true});return spatialOcrText(result.data)}finally{await worker.terminate()}
+ onProgress?.('Enhancing screenshot and reading text on this device…');const {createWorker}=await import('tesseract.js'),worker=await createWorker('eng');try{const bitmap=await createImageBitmap(file);const scale=Math.min(2.5,2600/Math.max(bitmap.width,bitmap.height));const canvas=document.createElement('canvas');canvas.width=Math.round(bitmap.width*scale);canvas.height=Math.round(bitmap.height*scale);const context=canvas.getContext('2d',{willReadFrequently:true});context.imageSmoothingEnabled=true;context.imageSmoothingQuality='high';context.drawImage(bitmap,0,0,canvas.width,canvas.height);bitmap.close();enhanceOcrCanvas(context,canvas.width,canvas.height);const result=await recognizeDocumentCanvas(worker,canvas);canvas.width=0;canvas.height=0;return spatialOcrText(result)}finally{await worker.terminate()}
+}
+async function recognizeDocumentCanvas(worker,canvas){
+ let best=null,bestScore=-1;
+ for(const mode of ['11','6']){
+  await worker.setParameters({tessedit_pageseg_mode:mode,preserve_interword_spaces:'1'});
+  const result=await worker.recognize(canvas,{}, {text:true,blocks:true});const text=spatialOcrText(result.data);const score=(text.match(/\d/g)||[]).length*3+(text.match(/\b(?:paid|payment|received|credit|debit)\b/gi)||[]).length*8+Math.min(text.length,500)/100;
+  if(score>bestScore){best=result.data;bestScore=score}
+ }
+ return best||{text:''};
+}
+function enhanceOcrCanvas(context,width,height){
+ const image=context.getImageData(0,0,width,height),pixels=image.data;
+ // Screenshots often have dark UPI cards with bright text; normalize contrast
+ // without thresholding so thin digits and decimal points remain visible.
+ for(let i=0;i<pixels.length;i+=4){const gray=Math.round(pixels[i]*.299+pixels[i+1]*.587+pixels[i+2]*.114);const contrasted=Math.max(0,Math.min(255,(gray-128)*1.45+128));pixels[i]=pixels[i+1]=pixels[i+2]=contrasted}
+ context.putImageData(image,0,0);
 }
 function spatialOcrText(data){
  const lines=[];for(const block of data.blocks||[])for(const paragraph of block.paragraphs||[])for(const line of paragraph.lines||[])if(line.text?.trim())lines.push({y:(line.bbox.y0+line.bbox.y1)/2,text:line.text.trim()});

@@ -419,6 +419,35 @@ def parse_document_date(value):
             pass
     return None
 
+def parse_payment_card_amount(block, date_re):
+    """Read a payment-card amount even when OCR drops the rupee glyph."""
+    currency_re = re.compile(r"(?:₹|rs\.?|inr|\br)\s*([0-9][0-9,]*(?:\.[0-9]{1,2})?)", re.I)
+    standalone_re = re.compile(r"\s*(?:(?:₹|rs\.?|inr|\br)\s*)?([0-9][0-9,]*(?:\.[0-9]{1,2})?)\s*(?:/-)?\s*", re.I)
+    # Prefer explicit currency markers. Tesseract commonly misses ₹ on dark
+    # UPI cards, so accept a clean amount-only line as a fallback, excluding
+    # date lines (which also contain digits).
+    for line in block:
+        match = currency_re.search(line)
+        if match:
+            try:
+                amount = float(match.group(1).replace(",", ""))
+                if amount > 0:
+                    return amount
+            except ValueError:
+                pass
+    for line in block:
+        if date_re.search(line) or re.search(r"\b(?:paid|am|pm)\b|\d{1,2}:\d{2}", line, re.I):
+            continue
+        match = standalone_re.fullmatch(line)
+        if match:
+            try:
+                amount = float(match.group(1).replace(",", ""))
+                if amount > 0:
+                    return amount
+            except ValueError:
+                pass
+    return None
+
 @app.post("/api/transactions/import-document-text")
 def import_document_text(data: dict = Body(...), db: Session = Depends(get_db), user: User = Depends(current_user)):
     content = data.get("text", "")
@@ -438,14 +467,12 @@ def import_document_text(data: dict = Body(...), db: Session = Depends(get_db), 
     has_payment_heading = any(re.search(r"\bpayment\s+(?:to|from)\b|\b(?:money\s+received|payment\s+received)\b", line, re.I) for line in lines)
     if len(paid_lines) >= 2 and has_payment_heading:
         boundaries = [-1, *paid_lines]
-        amount_re = re.compile(r"(?:₹|rs\.?|inr|\br)\s*([0-9][0-9,]*(?:\.[0-9]{1,2})?)", re.I)
         for boundary_index in range(1, len(boundaries)):
             start, end = boundaries[boundary_index - 1] + 1, boundaries[boundary_index]
             block = lines[start:end + 1]
             handled_lines.update(range(start, end + 1))
             joined = " ".join(block)
-            amount_match = next((match for line in block if (match := amount_re.search(line))), None)
-            amount = float(amount_match.group(1).replace(",", "")) if amount_match else None
+            amount = parse_payment_card_amount(block, date_re)
             date_match = next((match for line in block if (match := date_re.search(line))), None)
             parsed_date = parse_document_date(date_match.group(1)) if date_match else None
             heading = next((line.strip() for line in block if re.search(r"\bpayment\s+(?:to|from)\b|\b(?:money\s+received|payment\s+received)\b", line, re.I)), "")
@@ -479,12 +506,7 @@ def import_document_text(data: dict = Body(...), db: Session = Depends(get_db), 
         heading = card_re.search(title).group(0)
         heading_lower = heading.casefold()
         typ = "income" if ("to you" in heading_lower or "received" in heading_lower or "payment from" in heading_lower) else "expense"
-        amount = None
-        for item in block:
-            amount_match = re.search(r"(?:₹|rs\.?|inr)\s*([0-9][0-9,]*(?:\.[0-9]{1,2})?)", item, re.I)
-            if amount_match:
-                amount = float(amount_match.group(1).replace(",", ""))
-                break
+        amount = parse_payment_card_amount(block, date_re)
         date_match = next((date_re.search(item) for item in block if date_re.search(item)), None)
         parsed_date = parse_document_date(date_match.group(1)) if date_match else None
         if amount is None or amount <= 0 or parsed_date is None:
