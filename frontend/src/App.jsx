@@ -72,8 +72,11 @@ function enhanceOcrCanvas(context,width,height){
  context.putImageData(image,0,0);
 }
 function spatialOcrText(data){
- const lines=[];for(const block of data.blocks||[])for(const paragraph of block.paragraphs||[])for(const line of paragraph.lines||[])if(line.text?.trim())lines.push({y:(line.bbox.y0+line.bbox.y1)/2,text:line.text.trim()});
- return lines.length?lines.sort((a,b)=>a.y-b.y).map(line=>line.text).join('\n'):data.text||''
+ const lines=[];for(const block of data.blocks||[])for(const paragraph of block.paragraphs||[])for(const line of paragraph.lines||[])if(line.text?.trim())lines.push({x:line.bbox.x0,y:(line.bbox.y0+line.bbox.y1)/2,height:line.bbox.y1-line.bbox.y0,text:line.text.trim()});
+ if(!lines.length)return data.text||'';
+ lines.sort((a,b)=>a.y-b.y||a.x-b.x);const rows=[];
+ for(const line of lines){let row=rows[rows.length-1];if(!row||Math.abs(row.y-line.y)>Math.max(10,(row.height+line.height)*.35)){row={y:line.y,height:line.height,parts:[]};rows.push(row)}row.parts.push(line);row.height=Math.max(row.height,line.height)}
+ return rows.map(row=>row.parts.sort((a,b)=>a.x-b.x).map(part=>part.text).join(' ')).join('\n')
 }
 
 function Auth({onLogin,theme,onThemeToggle}){

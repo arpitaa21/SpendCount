@@ -529,6 +529,76 @@ def import_document_text(data: dict = Body(...), db: Session = Depends(get_db), 
 
     credit_words = re.compile(r"\b(cr|credit|credited|deposit|deposited|salary|scholarship|allowance|refund|received)\b", re.I)
     debit_words = re.compile(r"\b(dr|debit|debited|withdrawal|withdrawn|purchase|paid|payment|spent)\b", re.I)
+    # Wallet history screenshots usually put the person + amount on one row
+    # and the date directly below it (unlike payment-detail cards).
+    history_money_re = re.compile(r"(?P<sign>[+-])?\s*(?:₹|rs\.?|inr)\s*(?P<amount>[0-9][0-9,]*(?:\.[0-9]{1,2})?)", re.I)
+    month_words = re.compile(r"\b(?:jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|jun(?:e)?|jul(?:y)?|aug(?:ust)?|sep(?:tember)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?)\b", re.I)
+    history_rows_found = 0
+    for index, line in enumerate(lines):
+        if index in handled_lines:
+            continue
+        amount_match = history_money_re.search(line)
+        if not amount_match:
+            continue
+        # Monthly headings often show a month total such as "November + ₹12,141".
+        if month_words.search(line) and not date_re.search(line):
+            continue
+        try:
+            amount = float(amount_match.group("amount").replace(",", ""))
+        except ValueError:
+            continue
+        if amount <= 0:
+            continue
+        low, high = max(0, index - 2), min(len(lines), index + 3)
+        neighborhood = lines[low:high]
+        if any(re.search(r"\bfailed\b", item, re.I) for item in neighborhood):
+            continue
+        # The date most often follows the amount row; check there first, then
+        # allow the date immediately above for differently arranged screens.
+        dated_line = next((j for j in range(index, min(len(lines), index + 3)) if date_re.search(lines[j])), None)
+        if dated_line is None:
+            dated_line = next((j for j in range(index - 1, max(-1, index - 3), -1) if date_re.search(lines[j])), None)
+        if dated_line is None:
+            continue
+        date_match = date_re.search(lines[dated_line])
+        parsed_date = parse_document_date(date_match.group(1)) if date_match else None
+        if not parsed_date:
+            continue
+
+        description_text = (line[:amount_match.start()] + " " + line[amount_match.end():]).strip(" +-|,;:")
+        if not description_text or not re.search(r"[A-Za-z]", description_text) or month_words.fullmatch(description_text.strip()):
+            description_text = ""
+            for distance in (1, 2):
+                candidates = (index - distance, index + distance)
+                for candidate_index in candidates:
+                    if candidate_index < low or candidate_index >= high or candidate_index == dated_line:
+                        continue
+                    candidate = lines[candidate_index].strip()
+                    if not candidate or history_money_re.search(candidate) or date_re.search(candidate) or re.fullmatch(r"\d{4}", candidate) or month_words.fullmatch(candidate) or re.search(r"\b(?:failed|successful|completed|paid)\b", candidate, re.I):
+                        continue
+                    description_text = re.sub(r"\s+", " ", candidate).strip(" +-|,;:")
+                    break
+                if description_text:
+                    break
+        description_text = re.sub(r"\s+", " ", description_text).strip(" +-|,;:")[:250]
+        if not description_text:
+            continue
+
+        history_rows_found += 1
+        context = " ".join(neighborhood)
+        is_income = amount_match.group("sign") == "+" or bool(credit_words.search(context))
+        typ = "income" if is_income and not debit_words.search(context) else "expense"
+        predicted = predict_income_category(description_text) if typ == "income" else predict_user_category(db, user.id, description_text)
+        category = predicted["category"] if isinstance(predicted, dict) else predicted
+        key = (parsed_date.isoformat(), description_text.casefold(), round(amount, 2), typ)
+        if key in existing or key in seen:
+            rejected.append({"row": index + 1, "reason": "Possible duplicate transaction", "data": {"text": " ".join(neighborhood)[:250]}})
+            continue
+        seen.add(key)
+        accepted.append({"date": parsed_date.isoformat(), "description": description_text, "amount": amount, "transaction_type": typ, "category": category, "payment_method": "UPI", "notes": None, "source": "document"})
+    if history_rows_found:
+        return {"preview": True, "accepted_count": len(accepted), "rejected_count": len(rejected), "accepted": accepted, "rejected": rejected, "message": "Review each transaction's amount, date, direction, and category before importing."}
+
     money_re = re.compile(r"(?<![A-Za-z0-9/#:])[-+]?\s*(?:₹|INR\s*)?\d[\d,]*(?:\.\d{1,2})?(?![A-Za-z0-9/#:])", re.I)
     for line_no, line in enumerate(lines, 1):
         if line_no - 1 in handled_lines or not line:
