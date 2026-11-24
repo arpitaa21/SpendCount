@@ -628,6 +628,9 @@ def csv_template():
 
 @app.get("/api/dashboard/summary")
 def dashboard_summary(db: Session = Depends(get_db), user: User = Depends(current_user)):
+    return dashboard_summary_data(db, user)
+
+def dashboard_summary_data(db: Session, user: User, forecast_context=None):
     today = date.today()
     start, end = month_bounds(today)
     row = db.query(
@@ -635,7 +638,7 @@ def dashboard_summary(db: Session = Depends(get_db), user: User = Depends(curren
         func.coalesce(func.sum(case((Transaction.transaction_type == "expense", Transaction.amount), else_=0)), 0),
     ).filter(Transaction.user_id == user.id, Transaction.date >= start, Transaction.date <= today).one()
     income, spent = float(row[0]), float(row[1])
-    fc, _, upcoming = forecast_for(user.id, db)
+    fc, _, upcoming = forecast_context or forecast_for(user.id, db)
     budgets = db.query(Budget).filter(Budget.user_id == user.id).all()
     limit = sum(b.monthly_limit for b in budgets)
     current = balance_for(user.id, db, today)
@@ -834,6 +837,9 @@ def anomalies(db: Session = Depends(get_db), user: User = Depends(current_user))
 
 @app.get("/api/ai/alerts")
 def personalized_alerts(db: Session = Depends(get_db), user: User = Depends(current_user)):
+    return build_personalized_alerts(db, user)
+
+def build_personalized_alerts(db: Session, user: User, forecast_context=None):
     today = date.today()
     start, end = month_bounds(today)
     spent_rows = db.query(Transaction.category, func.sum(Transaction.amount)).filter(Transaction.user_id == user.id, Transaction.transaction_type == "expense", Transaction.date >= start, Transaction.date <= today).group_by(Transaction.category).all()
@@ -851,7 +857,7 @@ def personalized_alerts(db: Session = Depends(get_db), user: User = Depends(curr
             per_day = max(0.01, pace)
             days_to_limit = max(1, int((budget.monthly_limit - spent) / per_day))
             alerts.append({"alert_id": f"budget-pace-{budget.category}", "title": f"{budget.category} budget may run over", "description": f"At your current pace, the ₹{budget.monthly_limit:,.0f} limit could be reached in about {days_to_limit} days.", "severity": "warning", "amount": round(projected, 2)})
-    fc, _, upcoming = forecast_for(user.id, db)
+    fc, _, upcoming = forecast_context or forecast_for(user.id, db)
     if fc["predicted_end_balance"] < 0:
         alerts.append({"alert_id": "cash-flow-shortfall", "title": "Cash-flow pinch ahead", "description": f"Your current spending pace projects a ₹{abs(fc['predicted_end_balance']):,.0f} shortfall by month end, before unconfirmed income.", "severity": "critical", "amount": fc["predicted_end_balance"]})
     if upcoming:
@@ -905,6 +911,17 @@ def snooze_alert(alert_id: int, days: int = Query(7, ge=1, le=30), db: Session =
     row.is_read = True
     db.commit()
     return {"id": row.id, "snoozed_until": row.snoozed_until.isoformat()}
+
+@app.get("/api/dashboard/overview")
+def dashboard_overview(db: Session = Depends(get_db), user: User = Depends(current_user)):
+    forecast_context = forecast_for(user.id, db)
+    return {
+        "summary": dashboard_summary_data(db, user, forecast_context),
+        "trends": spending_trends(db, user),
+        "breakdown": spending_breakdown(db, user),
+        "transactions": list_transactions(db=db, user=user, limit=6, offset=0),
+        "alerts": build_personalized_alerts(db, user, forecast_context),
+    }
 
 @app.get("/api/ai/insights")
 def insights(db: Session = Depends(get_db), user: User = Depends(current_user)):
