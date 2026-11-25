@@ -69,7 +69,15 @@ async function recognizeAmountColumn(worker,canvas){
  // rupee glyph is not fed to an English OCR model that may mistake it for 3.
  const left=Math.round(canvas.width*.68),width=canvas.width-left,crop=document.createElement('canvas');crop.width=width;crop.height=canvas.height;crop.getContext('2d').drawImage(canvas,left,0,width,canvas.height,0,0,width,canvas.height);
  await worker.setParameters({tessedit_pageseg_mode:'11',tessedit_char_whitelist:'0123456789.,+-'});
- const result=await worker.recognize(crop,{}, {text:true,blocks:true});crop.width=0;crop.height=0;return result.data;
+ const result=await worker.recognize(crop,{}, {text:true,blocks:true});crop.width=0;crop.height=0;return removeRupeeOcrPrefix(result.data);
+}
+function removeRupeeOcrPrefix(data){
+ // In this INR amount-only crop, Tesseract sometimes emits the ₹ glyph as a
+ // leading 3 (₹60 -> 360, ₹2,800 -> 32800). Remove that one symbol artifact.
+ const clean=line=>line.replace(/^(\s*[+-]?\s*)3(?=\d[\d,]*(?:\.\d+)?\s*$)/,'$1');
+ for(const block of data.blocks||[])for(const paragraph of block.paragraphs||[])for(const line of paragraph.lines||[])line.text=clean(line.text||'');
+ if(data.text)data.text=data.text.split('\n').map(clean).join('\n');
+ return data;
 }
 function enhanceOcrCanvas(context,width,height){
  const image=context.getImageData(0,0,width,height),pixels=image.data;
